@@ -46,12 +46,21 @@ export default function Sidebar() {
   const isActive = (path) => pathname === path;
 
   const handlePlayPlaylist = async (playlistId) => {
-    setContext("playlist");
-    setContextId(playlistId);
-    await updateSongsForContext("playlist", playlistId);
-    if (songs.length > 0) {
-      playSong(songs[0]);
-    }
+   setContext("playlist");
+   setContextId(playlistId);
+
+   // Cập nhật danh sách bài hát và chờ hoàn tất
+   const newSongs = await updateSongsForContext("playlist", playlistId);
+
+   // Nếu updateSongsForContext không return mảng, fallback về context.songs
+   const finalSongs = Array.isArray(newSongs) && newSongs.length > 0
+     ? newSongs
+     : songs;
+
+   // Phát bài đầu tiên nếu có
+   if (finalSongs.length > 0) {
+     playSong(finalSongs[0]);
+   }
   };
 
   return (
