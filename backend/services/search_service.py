@@ -33,9 +33,6 @@ class SearchService:
         raw_query = query.strip().lower()
         normalized_query = SearchService.strip_vietnamese_accents(raw_query)
 
-        print(f"\n[🔍 SEARCH] Raw query: '{raw_query}'")
-        print(f"[🔍 SEARCH] Normalized query: '{normalized_query}'")
-
         regex = Regex(f".*{raw_query}.*", "i")
         normalized_regex = Regex(f".*{normalized_query}.*", "i")
 
@@ -55,10 +52,18 @@ class SearchService:
                         {"artist": regex}
                     ]
                 }, {
-                    "_id": 1, "title": 1, "artist": 1, "coverArt": 1, "duration": 1
+                    "_id": 1, "title": 1, "artist": 1,
+                    "coverArt": 1, "cover_art": 1, "cover_image": 1, "cover_url": 1,
+                    "duration": 1
                 })
-                results["songs"] = [SearchService._convert_id(s) for s in songs]
-                print(f"[✅ SONGS] Found {len(results['songs'])} songs")
+
+                results["songs"] = [
+                    {
+                        **SearchService._convert_id(s),
+                        "cover_art": s.get("coverArt") or s.get("cover_art") or s.get("cover_image") or s.get("cover_url"),
+                    }
+                    for s in songs
+                ]
             except Exception as e:
                 print("[❌ SONGS ERROR]", e)
                 traceback.print_exc()
@@ -74,8 +79,13 @@ class SearchService:
                 }, {
                     "_id": 1, "name": 1, "image": 1, "avatar_url": 1
                 })
-                results["artists"] = [SearchService._convert_id(a) for a in artists]
-                print(f"[✅ ARTISTS] Found {len(results['artists'])} artists")
+                results["artists"] = [
+                    {
+                        **SearchService._convert_id(a),
+                        "image": a.get("image") or a.get("avatar_url")
+                    }
+                    for a in artists
+                ]
             except Exception as e:
                 print("[❌ ARTISTS ERROR]", e)
                 traceback.print_exc()
@@ -90,11 +100,18 @@ class SearchService:
                         {"artist.name": regex}
                     ]
                 }, {
-                    "_id": 1, "title": 1, "coverArt": 1, "cover_art": 1, "cover_url": 1,
+                    "_id": 1, "title": 1,
+                    "coverArt": 1, "cover_art": 1, "cover_url": 1, "cover_image": 1,
                     "artist": 1, "release_year": 1
                 })
-                results["albums"] = [SearchService._convert_id(a) for a in albums]
-                print(f"[✅ ALBUMS] Found {len(results['albums'])} albums")
+
+                results["albums"] = [
+                    {
+                        **SearchService._convert_id(a),
+                        "cover_art": a.get("coverArt") or a.get("cover_art") or a.get("cover_image") or a.get("cover_url"),
+                    }
+                    for a in albums
+                ]
             except Exception as e:
                 print("[❌ ALBUMS ERROR]", e)
                 traceback.print_exc()
@@ -103,17 +120,33 @@ class SearchService:
 
     @staticmethod
     def get_trending(limit: int = 5) -> Dict[str, List[dict]]:
-        print("[🔥 TRENDING] Fetching trending items...")
-
         try:
             songs = list(songs_collection.find().sort("play_count", -1).limit(limit))
             artists = list(artists_collection.find().limit(3))
             albums = list(albums_collection.find().limit(3))
 
             return {
-                "songs": [SearchService._convert_id(s) for s in songs],
-                "artists": [SearchService._convert_id(a) for a in artists],
-                "albums": [SearchService._convert_id(a) for a in albums]
+                "songs": [
+                    {
+                        **SearchService._convert_id(s),
+                        "cover_art": s.get("coverArt") or s.get("cover_art") or s.get("cover_image") or s.get("cover_url")
+                    }
+                    for s in songs
+                ],
+                "artists": [
+                    {
+                        **SearchService._convert_id(a),
+                        "image": a.get("image") or a.get("avatar_url")
+                    }
+                    for a in artists
+                ],
+                "albums": [
+                    {
+                        **SearchService._convert_id(a),
+                        "cover_art": a.get("coverArt") or a.get("cover_art") or a.get("cover_image") or a.get("cover_url")
+                    }
+                    for a in albums
+                ]
             }
 
         except Exception as e:
@@ -124,4 +157,3 @@ class SearchService:
                 "artists": [],
                 "albums": []
             }
-
