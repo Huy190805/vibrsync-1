@@ -8,7 +8,7 @@ import { useMusic } from "@/context/music-context";
 import { formatDuration } from "@/lib/utils";
 import WaveBars from "@/components/ui/WaveBars";
 import SongActionsMenu from "./song-actions-menu";
-
+import LikeSongButton from "@/components/liked-button/LikeButton";
 
 export default function SongList({ songs: propSongs }) {
   const { playSong, isPlaying, currentSong, togglePlayPause, nextSong,  setSongs,
@@ -101,7 +101,7 @@ const handlePlayClick = (song) => {
   };
 
   return (
-    <div className="bg-zinc-900 shadow-md rounded-xl overflow-hidden relative border border-zinc-700">
+     <div className="bg-[#2f1047] shadow-md rounded-xl overflow-hidden relative border border-[#250f35]">
       <div
         ref={scrollRef}
         className="max-h-[360px] overflow-y-auto scroll-container transition-all duration-300 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-900"
@@ -114,8 +114,8 @@ const handlePlayClick = (song) => {
         }}
       >
         <table className="w-full text-sm text-left">
-          <thead className="sticky top-0 bg-zinc-800 z-10">
-            <tr className="border-b border-zinc-700 text-gray-200 uppercase">
+          <thead className="sticky top-0 bg-[#250f35] z-10">
+            <tr className="border-b border-[#250f35] text-purple-200 uppercase text-xs">
               <th className="p-3 w-10 font-medium">#</th>
               <th className="p-3 font-medium">Title</th>
               <th className="p-3 font-medium hidden md:table-cell">Album</th>
@@ -131,9 +131,9 @@ const handlePlayClick = (song) => {
               return (
                 <tr
                   key={song.id}
-                  className={`group border-b border-zinc-700 hover:bg-zinc-800 transition ${
-                    isCurrent ? "bg-zinc-800" : ""
-                  }`}
+                  className={`group border-b border-[#30114a] ${
+                    isCurrent ? "bg-[#250f35]" : "bg-[#2f1047] hover:bg-[#30114a]"
+                  } transition`}
                 >
                   <td className="p-3 text-gray-400">
                     <div className="w-6 h-6 flex items-center justify-center relative">
@@ -159,16 +159,21 @@ const handlePlayClick = (song) => {
                           src={song.coverArt || "/placeholder.svg"}
                           alt={song.title || "Cover"}
                           fill
-                          className={`object-cover ${
-                            isCurrent && isPlaying ? "animate-pulse" : ""
-                          }`}
+                          className={`object-cover ${isCurrent && isPlaying ? "animate-pulse" : ""}`}
                         />
                       </div>
-                      <div>
-                        <Link href={`/song/${song.id}`} className="text-gray-100 font-medium hover:underline">
+                      <div className="relative group">
+                        <Link href={`/song/${song.id}`} className="text-white font-medium hover:underline">
                           {song.title}
                         </Link>
-                        <div className="text-sm text-gray-400">{song.artist}</div>
+                        <div className="text-sm text-neutral-400">{song.artist}</div>
+
+                        <div className="absolute z-50 hidden group-hover:block top-full left-0 mt-2 w-64 p-3 bg-[#250f35] text-white text-xs rounded shadow-lg border border-[#30114a]">
+                          <div><strong>Artist:</strong> {song.artist}</div>
+                          <div><strong>Album:</strong> {song.album || "Unknown"}</div>
+                          <div><strong>Genre:</strong> {Array.isArray(song.genre) ? song.genre.join(", ") : song.genre || "Unknown"}</div>
+                          <div><strong>Release Year:</strong> {song.releaseYear || "Unknown"}</div>
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -180,18 +185,11 @@ const handlePlayClick = (song) => {
                   </td>
                   <td className="p-3 text-right">
                     <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => toggleLike(song.id)}
-                        className={`hover:text-white ${
-                          isLiked ? "text-pink-500" : "text-gray-400"
-                        }`}
-                      >
-                        <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
-                      </button>
+                      <LikeSongButton songId={song.id} />
                       <button
                         ref={(el) => (moreBtnRefs.current[song.id] = el)}
                         onClick={() => toggleOptions(song.id)}
-                        className="text-gray-400 hover:text-white"
+                        className="text-purple-300 hover:text-white"
                       >
                         <MoreHorizontal size={18} />
                       </button>
@@ -208,7 +206,7 @@ const handlePlayClick = (song) => {
       {optionsOpenId && (
         <div
           ref={popupRef}
-          className="fixed w-72 bg-zinc-800 text-white rounded-xl shadow-xl z-50 p-4 animate-fadeIn"
+          className="fixed w-72 bg-[#250f35] text-white rounded-xl shadow-xl z-50 p-4 animate-fadeIn"
           style={{ top: popupPos.top, left: popupPos.left }}
         >
           <div className="flex gap-3">
@@ -224,11 +222,11 @@ const handlePlayClick = (song) => {
               <div className="font-semibold text-base truncate">
                 {propSongs.find((s) => s.id === optionsOpenId)?.title}
               </div>
-              <div className="text-sm text-gray-400">
+              <div className="text-sm text-neutral-400">
                 {propSongs.find((s) => s.id === optionsOpenId)?.artist}
               </div>
             </div>
-            <button onClick={() => setOptionsOpenId(null)} className="text-gray-400 hover:text-white">
+            <button onClick={() => setOptionsOpenId(null)} className="text-purple-400 hover:text-white">
               <X size={16} />
             </button>
           </div>

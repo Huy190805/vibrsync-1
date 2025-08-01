@@ -17,25 +17,20 @@
       "static/chunks/main-app.js",
       "static/chunks/app/signin/page.js"
     ],
-    "/search/page": [
+    "/liked/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/search/page.js"
+      "static/chunks/app/liked/page.js"
     ],
-    "/genres/page": [
+    "/playlist/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/genres/page.js"
+      "static/chunks/app/playlist/[id]/page.js"
     ],
-    "/library/page": [
+    "/artist/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/library/page.js"
-    ],
-    "/song/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/song/[id]/page.js"
+      "static/chunks/app/artist/[id]/page.js"
     ]
   }
 }

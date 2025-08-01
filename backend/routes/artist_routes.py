@@ -24,10 +24,7 @@ async def get_artists(limit: int = None, user: dict = Depends(get_optional_user)
             # ✅ Bắt lỗi thiếu _id
             artist_id = str(getattr(artist, "_id", None) or artist_dict.get("_id") or artist_dict.get("id"))
             if not artist_id:
-                print("⚠️ Artist missing _id:", artist_dict)
                 continue  # bỏ qua nếu không có ID
-
-            print("✅ Artist:", artist_dict.get("name", "Unknown"), "| ID:", artist_id)
 
             artist_dict["id"] = artist_id  # thêm id cho frontend
             artist_dict["isFollowing"] = follow_service.is_following(user["id"], artist_id) if user else False
@@ -36,7 +33,6 @@ async def get_artists(limit: int = None, user: dict = Depends(get_optional_user)
 
         return {"artists": artist_list, "total": len(artist_list)}
     except Exception as e:
-        print("❌ Error in get_artists:", str(e))
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # ✅ GET single artist
