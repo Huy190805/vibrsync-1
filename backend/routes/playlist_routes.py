@@ -5,6 +5,7 @@ from bson import ObjectId, errors
 from datetime import datetime
 from pydantic import BaseModel
 
+from database.db import songs_collection
 from models.playlist import PlaylistCreate
 from services.playlist_service import PlaylistService
 from models.playlist import PlaylistUpdate
