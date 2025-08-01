@@ -1,12 +1,11 @@
 "use client";
-// playlist/page.jsx
+
 import { use, useEffect, useState, useRef } from "react";
-import { notFound } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { Heart, MoreHorizontal, Play, Search } from "lucide-react";
 
-import PlaylistSongList from "@/components/songs/playlist-song-list"; // merged smart version
-import SongList from "@/components/songs/search_playlistpage"; // merged smart version
+import PlaylistSongList from "@/components/songs/playlist-song-list";
+import SongList from "@/components/songs/search_playlistpage";
 import ArtistCard from "@/components/artist/ArtistCard";
 import PlaylistModal from "@/components/playlist/PlaylistModal";
 
@@ -16,7 +15,6 @@ import { triggerPlaylistRefresh } from "@/lib/api/playlist-refresh";
 import { searchAll } from "@/lib/api/search";
 import LikePlaylistButton from "@/components/liked-button/LikePlaylistButton";
 
-
 export default function PlaylistPage({ params: paramsPromise }) {
   const params = use(paramsPromise);
   const id = Array.isArray(params?.id) ? params.id[0] : params.id;
@@ -24,9 +22,10 @@ export default function PlaylistPage({ params: paramsPromise }) {
 
   const [playlist, setPlaylist] = useState(null);
   const [validSongs, setValidSongs] = useState([]);
+  const [songsLoading, setSongsLoading] = useState(true);
+
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
-
   const [editingPlaylist, setEditingPlaylist] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -36,48 +35,35 @@ export default function PlaylistPage({ params: paramsPromise }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchInputRef = useRef(null);
 
-  // 🧠 Fetch Playlist
-  const fetchPlaylist = async () => {
-    if (!id || typeof id !== "string") return notFound();
-    const playlistData = await getPlaylistById(id);
-    if (!playlistData) return notFound();
-    setPlaylist(playlistData);
-
-    if (Array.isArray(playlistData.songIds)) {
-      try {
-        const songs = await Promise.all(playlistData.songIds.map(getSongById));
-        setValidSongs(songs.filter(Boolean));
-      } catch (err) {
-        console.error("Failed to fetch songs:", err);
-      }
-    }
-  };
-
-  const refreshPlaylist = fetchPlaylist;
-
-  // 🗑 Delete
-  const handleDeletePlaylist = async () => {
-    const confirmed = confirm("Are you sure you want to delete this playlist?");
-    if (!confirmed) return;
-    try {
-      await deletePlaylist(playlist.id);
-      triggerPlaylistRefresh();
-      router.push("/library");
-    } catch (err) {
-      console.error("Failed to delete playlist:", err);
-      alert("Failed to delete playlist.");
-    }
-  };
-
-  // ✏️ Edit
-  const handleEditPlaylist = (playlist) => {
-    setShowMenu(false);
-    setEditingPlaylist(playlist);
-    setShowEditModal(true);
-  };
-
+  // 🧠 Fetch Playlist metadata
   useEffect(() => {
-    fetchPlaylist();
+    if (!id || typeof id !== "string") return;
+
+    const fetch = async () => {
+      try {
+        const playlistData = await getPlaylistById(id);
+        if (!playlistData) {
+          router.replace("/not-found"); // safer than notFound() inside async
+          return;
+        }
+        setPlaylist(playlistData);
+        setSongsLoading(true);
+
+        if (Array.isArray(playlistData.songIds)) {
+          const songFetches = await Promise.allSettled(playlistData.songIds.map(getSongById));
+          const songs = songFetches
+            .filter((r) => r.status === "fulfilled" && r.value)
+            .map((r) => r.value);
+          setValidSongs(songs);
+        }
+      } catch (err) {
+        console.error("Failed to fetch playlist:", err);
+      } finally {
+        setSongsLoading(false);
+      }
+    };
+
+    fetch();
   }, [id]);
 
   // ⛔ Close dropdown when clicking outside
@@ -96,7 +82,6 @@ export default function PlaylistPage({ params: paramsPromise }) {
     const fetchSearch = async () => {
       if (!query.trim()) {
         setSearchResults({ songs: [], artists: [] });
-        refreshPlaylist();
         return;
       }
       try {
@@ -109,7 +94,9 @@ export default function PlaylistPage({ params: paramsPromise }) {
         console.error("Search error:", err);
       }
     };
-    fetchSearch();
+
+    const debounce = setTimeout(() => fetchSearch(), 200);
+    return () => clearTimeout(debounce);
   }, [query]);
 
   useEffect(() => {
@@ -118,7 +105,9 @@ export default function PlaylistPage({ params: paramsPromise }) {
     }
   }, [isSearchOpen]);
 
-  if (!playlist) return null;
+  if (!playlist) {
+    return <div className="p-6 text-white">Loading playlist...</div>;
+  }
 
   const firstSongCover = validSongs[0]?.coverArt || playlist.coverArt || "/placeholder.svg";
 
@@ -131,15 +120,13 @@ export default function PlaylistPage({ params: paramsPromise }) {
           <p className="uppercase text-xs font-semibold text-purple-300">Playlist</p>
           <h1 className="text-4xl md:text-5xl font-bold mt-1">{playlist.title}</h1>
           <p className="text-gray-300 mt-2 text-sm">{playlist.description || "No description."}</p>
-          <p className="text-sm text-neutral-400 mt-1">{validSongs.length} {validSongs.length === 1 ? "song" : "songs"}</p>
+          <p className="text-sm text-neutral-400 mt-1">{validSongs.length} song(s)</p>
 
           <div className="flex items-center gap-4 mt-4">
             <button className="bg-green-500 hover:bg-green-600 text-black px-6 py-2 rounded-full font-bold shadow">
               Play
             </button>
             <LikePlaylistButton playlistId={playlist._id} />
-
-            {/* Dropdown */}
             <div className="relative" ref={menuRef}>
               <button onClick={() => setShowMenu(!showMenu)} className="text-white hover:text-gray-300">
                 <MoreHorizontal className="w-6 h-6" />
@@ -149,7 +136,14 @@ export default function PlaylistPage({ params: paramsPromise }) {
                   <ul className="text-sm">
                     <li className="px-4 py-2 hover:bg-purple-700 cursor-pointer" onClick={() => handleEditPlaylist(playlist)}>Edit Playlist</li>
                     <li className="px-4 py-2 hover:bg-purple-700 cursor-pointer">Share</li>
-                    <li className="px-4 py-2 hover:bg-purple-700 cursor-pointer" onClick={handleDeletePlaylist}>Delete</li>
+                    <li className="px-4 py-2 hover:bg-purple-700 cursor-pointer" onClick={async () => {
+                      const confirmed = confirm("Delete this playlist?");
+                      if (confirmed) {
+                        await deletePlaylist(playlist.id);
+                        triggerPlaylistRefresh();
+                        router.push("/library");
+                      }
+                    }}>Delete</li>
                   </ul>
                 </div>
               )}
@@ -165,36 +159,31 @@ export default function PlaylistPage({ params: paramsPromise }) {
             <input
               ref={searchInputRef}
               type="text"
-              className="w-full p-3 pl-10 rounded-full bg-gradient-to-r from-purple-900 to-purple-800 text-white placeholder-purple-300 border border-purple-600 shadow focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+              className="w-full p-3 pl-10 rounded-full bg-gradient-to-r from-purple-900 to-purple-800 text-white placeholder-purple-300 border border-purple-600 shadow"
               placeholder="Search songs or artists..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onBlur={() => {
-                if (!query.trim()) setIsSearchOpen(false);
-              }}
+              onBlur={() => !query.trim() && setIsSearchOpen(false)}
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-300 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-300" />
           </div>
         ) : (
           <button
-            className="p-3 rounded-full bg-gradient-to-br from-purple-700 to-purple-900 text-white hover:from-purple-600 hover:to-purple-800 border border-purple-600 shadow-lg transition"
+            className="p-3 rounded-full bg-gradient-to-br from-purple-700 to-purple-900 text-white hover:from-purple-600 hover:to-purple-800 border border-purple-600 shadow-lg"
             onClick={() => setIsSearchOpen(true)}
-            aria-label="Open Search"
           >
             <Search className="w-5 h-5" />
           </button>
         )}
       </div>
-        
+
       {/* Content */}
       <div className="p-6 pt-4 md:p-10 md:pt-6 space-y-10">
-        
         {query.trim() ? (
           <>
             {searchResults.songs.length > 0 && (
               <div>
                 <h2 className="text-2xl font-semibold mb-2">Songs</h2>
-                
                 <SongList
                   songs={searchResults.songs.map((s) => ({
                     id: s.id || s._id,
@@ -206,7 +195,7 @@ export default function PlaylistPage({ params: paramsPromise }) {
                     coverArt: s.coverArt || "/placeholder.svg",
                     genre: s.genre,
                     publisher: s.publisher,
-                    refreshPlaylist,
+                    refreshPlaylist: () => {}, // no refresh while searching
                   }))}
                 />
               </div>
@@ -225,6 +214,8 @@ export default function PlaylistPage({ params: paramsPromise }) {
               <p className="text-gray-400">No results found for "{query}".</p>
             )}
           </>
+        ) : songsLoading ? (
+          <p className="text-purple-300">Loading songs...</p>
         ) : (
           <PlaylistSongList songs={validSongs} playlistId={playlist.id} />
         )}
@@ -239,7 +230,7 @@ export default function PlaylistPage({ params: paramsPromise }) {
           }}
           editingPlaylist={editingPlaylist}
           onSuccess={async () => {
-            await fetchPlaylist();
+            await getPlaylistById(id).then(setPlaylist);
             setShowEditModal(false);
             setEditingPlaylist(null);
           }}
