@@ -1,5 +1,5 @@
 "use client";
-
+// playlist/page.jsx
 import { use, useEffect, useState, useRef } from "react";
 import { notFound } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -185,21 +185,23 @@ export default function PlaylistPage({ params: paramsPromise }) {
           </button>
         )}
       </div>
-
+        
       {/* Content */}
       <div className="p-6 pt-4 md:p-10 md:pt-6 space-y-10">
+        
         {query.trim() ? (
           <>
             {searchResults.songs.length > 0 && (
               <div>
                 <h2 className="text-2xl font-semibold mb-2">Songs</h2>
+                
                 <SongList
                   songs={searchResults.songs.map((s) => ({
                     id: s.id || s._id,
                     title: s.title,
                     artist: s.artist?.name || s.artist,
                     artistId: s.artist?._id || s.artistId,
-                    album: s.album || "Unknown",
+                    album: s.album?._id || s.album,
                     duration: s.duration || 0,
                     coverArt: s.coverArt || "/placeholder.svg",
                     genre: s.genre,

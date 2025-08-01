@@ -147,13 +147,20 @@ async def get_followed_artists(current_user: dict = Depends(get_current_user)):
 
 @router.get("/me/liked-songs")
 def get_liked_songs(current_user: dict = Depends(get_current_user)):
+    user_id = current_user["id"]
 
+    # Find all liked song entries for the user
+    liked_entries = list(db["liked_songs"].find({"user_id": user_id}))
+
+    song_ids = [entry["song_id"] for entry in liked_entries]
+
+    # Fetch song details using SongService
     song_service = SongService(SongRepository(), ArtistRepository())
-    liked_song_ids = current_user.get("likedSongs", [])
 
-    songs = [song_service.get_song_by_id(song_id) for song_id in liked_song_ids]
-    # Lọc bỏ những bài hát None (không còn tồn tại)
-    songs = [s for s in songs if s]
+    # Get full song objects
+    songs = [song_service.get_song_by_id(song_id) for song_id in song_ids]
+    songs = [s for s in songs if s]  # Remove None (deleted songs)
+
     return {"liked": songs}
 
 @router.post("/history/full-listen")

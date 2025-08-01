@@ -30,10 +30,9 @@ export default function SongActionsMenu({ song }) {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="text-gray-400 hover:text-white"
-        title="Song options"
+        className="text-sm mt-2 space-y-2 hover:bg-white/10 rounded p-2 cursor-pointer w-full text-left"
       >
-        ⋯
+        Add to Playlist
       </button>
 
       {isOpen && (
