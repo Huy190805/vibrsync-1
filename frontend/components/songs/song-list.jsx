@@ -90,7 +90,7 @@ export default function SongList({ songs: propSongs }) {
         }}
       >
         <table className="w-full text-sm text-left">
-          <thead className="sticky top-0 bg-[#250f35] z-10">
+          <thead className="top-0 bg-[#250f35] z-10">
             <tr className="border-b border-[#250f35] text-purple-200 uppercase text-xs">
               <th className="p-3 w-10 font-medium">#</th>
               <th className="p-3 font-medium">Title</th>

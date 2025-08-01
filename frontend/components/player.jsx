@@ -12,6 +12,9 @@ import { formatDuration } from "@/lib/utils";
 import { toggleLikeSong } from "@/lib/api/user";
 import { recordFullListen } from "@/lib/api/listen";
 import { useAuth } from "@/context/auth-context";
+import LikeButton from "@/components/liked-button/LikeButton";
+import { fetchLikedSongs } from "@/lib/api/user";
+
 
 export default function Player() {
   const {
@@ -46,6 +49,24 @@ export default function Player() {
   useEffect(() => {
   console.log("🔁 Audio src updated:", currentSong?.audioUrl);
 }, [currentSong]);
+
+
+
+  useEffect(() => {
+    async function loadLikedSongs() {
+      if (!token) return;
+      try {
+        const data = await fetchLikedSongs(); // Expects { likedSongs: ["id1", "id2", ...] }
+        setLikedSongs(new Set(data.likedSongs));
+      } catch (err) {
+        console.error("❌ Failed to fetch liked songs:", err);
+      }
+    }
+
+    loadLikedSongs();
+  }, [token]);
+
+  
 
   // Fetch history
   useEffect(() => {
@@ -232,13 +253,8 @@ const handleProgressChange = (e) => {
           </Link>
         </div>
         
-        <button
-          className={`text-gray-400 hover:text-white ${isLiked ? "text-purple-500" : ""}`}
-          onClick={handleToggleLike}
-          title={isLiked ? "Unlike" : "Like"}
-        >
-          <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
-        </button>
+        <LikeButton songId={currentSong.id} />
+        
         
 <button
   onClick={() => setShowMore(!showMore)}
