@@ -5,6 +5,7 @@ from bson import ObjectId, errors
 from datetime import datetime
 from pydantic import BaseModel
 
+from database.db import songs_collection
 from models.playlist import PlaylistCreate
 from services.playlist_service import PlaylistService
 from models.playlist import PlaylistUpdate
@@ -151,3 +152,24 @@ async def remove_song_from_playlist(playlist_id: str, song_id: str):
         del updated["_id"]
         return updated
     raise HTTPException(status_code=500, detail="Failed to update playlist")
+
+@router.get("/playlists/{playlist_id}/songs", response_model=dict)
+async def get_songs_in_playlist(playlist_id: str):
+    playlist = playlists_collection.find_one({"_id": ObjectId(playlist_id)})
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist not found")
+
+    song_ids = playlist.get("songIds", [])
+    if not song_ids:
+        return {"songs": []}
+
+    # convert string IDs to ObjectId
+    object_ids = [ObjectId(song_id) for song_id in song_ids]
+    songs = list(songs_collection.find({"_id": {"$in": object_ids}}))
+
+    # clean up ObjectId
+    for song in songs:
+        song["id"] = str(song["_id"])
+        del song["_id"]
+
+    return {"songs": songs}

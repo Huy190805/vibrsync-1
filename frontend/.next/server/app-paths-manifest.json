@@ -1,7 +1,9 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
   "/signin/page": "app/signin/page.js",
-  "/liked/page": "app/liked/page.js",
-  "/playlist/[id]/page": "app/playlist/[id]/page.js",
-  "/artist/[id]/page": "app/artist/[id]/page.js"
+  "/role_artist/dashboard/page": "app/role_artist/dashboard/page.js",
+  "/role_artist/songs/page": "app/role_artist/songs/page.js",
+  "/role_artist/statistics/page": "app/role_artist/statistics/page.js",
+  "/role_artist/profile/view/page": "app/role_artist/profile/view/page.js"
 }

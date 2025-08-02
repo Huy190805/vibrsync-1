@@ -207,11 +207,6 @@ export default function SongList({ songs }) {
                 </div>
                 <div className="text-sm text-gray-400">{song.artist}</div>
 
-                <div className="absolute bottom-full left-0 mb-2 w-max bg-black/90 text-xs text-white px-3 py-2 rounded hidden group-hover:block z-50 whitespace-nowrap">
-                  <div><strong>Album:</strong> {song.album || "Unknown"}</div>
-                  <div><strong>Genre:</strong> {Array.isArray(song.genre) ? song.genre.join(", ") : song.genre || "Unknown"}</div>
-                  <div><strong>Publisher:</strong> {song.publisher || "Unknown"}</div>
-                </div>
               </div>
             </div>
 

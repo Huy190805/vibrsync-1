@@ -18,11 +18,26 @@ def get_song_service():
     return SongService(SongRepository(), ArtistRepository())
 
 @router.get("", response_model=SongsResponse)
-async def get_songs(sort: str = None, limit: int = None, service: SongService = Depends(get_song_service)):
+async def get_songs(
+    genre: str = None,
+    sort: str = None,
+    limit: int = None,
+    page: int = 1,
+    service: SongService = Depends(get_song_service)
+):
     try:
-        songs = service.get_all_songs(sort, limit)
+        print(f"Request received for genre: {genre}, page: {page}, limit: {limit}")
+        if genre:
+            songs = service.get_songs_by_genre(genre, page, limit)
+        else:
+            songs = service.get_all_songs(sort, limit)
+        print(f"Returning {len(songs)} songs")
         return {"songs": songs, "total": len(songs)}
+    except ValueError as e:
+        print(f"ValueError: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.get("/{id}", response_model=SongInDB)
