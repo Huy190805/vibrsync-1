@@ -3,7 +3,8 @@
 import { use, useEffect, useState, useRef } from "react";
 import { notFound } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Heart, MoreHorizontal, Play, Search } from "lucide-react";
+import { Heart, MoreHorizontal, Play, Search,Shuffle } from "lucide-react";
+import { useMusic } from "@/context/music-context";
 
 import PlaylistSongList from "@/components/songs/playlist-song-list"; // merged smart version
 import SongList from "@/components/songs/search_playlistpage"; // merged smart version
@@ -26,6 +27,7 @@ export default function PlaylistPage({ params: paramsPromise }) {
   const [validSongs, setValidSongs] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
+  const { setContext, setContextId, playSong, setSongs, toggleShuffle, isShuffling } = useMusic();
 
   const [editingPlaylist, setEditingPlaylist] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -134,8 +136,32 @@ export default function PlaylistPage({ params: paramsPromise }) {
           <p className="text-sm text-neutral-400 mt-1">{validSongs.length} {validSongs.length === 1 ? "song" : "songs"}</p>
 
           <div className="flex items-center gap-4 mt-4">
-            <button className="bg-green-500 hover:bg-green-600 text-black px-6 py-2 rounded-full font-bold shadow">
-              Play
+         <button
+          onClick={() => {
+          if (!validSongs.length) return;
+          setSongs(validSongs);
+          setContext("playlist");
+          setContextId(playlist.id);
+          playSong(validSongs[0]); 
+           }}
+          className="bg-green-500 hover:bg-green-600 text-black px-6 py-2 rounded-full font-bold shadow flex items-center gap-2"
+           >
+          <Play size={18} /> Play
+         </button>
+
+         <button
+         onClick={() => {
+         if (!validSongs.length) return;
+           toggleShuffle(); 
+           setSongs(validSongs);
+           setContext("playlist");
+           setContextId(playlist.id);
+           }}
+          className={`px-6 py-2 rounded-full font-bold shadow flex items-center gap-2 transition-transform duration-300 hover:scale-105 ${
+          isShuffling ? "bg-green-600 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+            }`}
+             >
+            <Shuffle size={18} /> Shuffle
             </button>
             <LikePlaylistButton playlistId={playlist._id} />
 
@@ -186,48 +212,59 @@ export default function PlaylistPage({ params: paramsPromise }) {
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-6 pt-4 md:p-10 md:pt-6 space-y-10">
-        {query.trim() ? (
-          <>
-            {searchResults.songs.length > 0 && (
-              <div>
-                <h2 className="text-2xl font-semibold mb-2">Songs</h2>
-                <SongList
-                  songs={searchResults.songs.map((s) => ({
-                    id: s.id || s._id,
-                    title: s.title,
-                    artist: s.artist?.name || s.artist,
-                    artistId: s.artist?._id || s.artistId,
-                    album: s.album || "Unknown",
-                    duration: s.duration || 0,
-                    coverArt: s.coverArt || "/placeholder.svg",
-                    genre: s.genre,
-                    publisher: s.publisher,
-                    refreshPlaylist,
-                  }))}
-                />
-              </div>
-            )}
-            {searchResults.artists.length > 0 && (
-              <div>
-                <h2 className="text-2xl font-semibold mb-2">Artists</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {searchResults.artists.map((artist) => (
-                    <ArtistCard key={artist._id} artist={artist} />
-                  ))}
-                </div>
-              </div>
-            )}
-            {searchResults.songs.length === 0 && searchResults.artists.length === 0 && (
-              <p className="text-gray-400">No results found for "{query}".</p>
-            )}
-          </>
-        ) : (
-          <PlaylistSongList songs={validSongs} playlistId={playlist.id} />
-        )}
-      </div>
+   {/* Content */}
+   <div className="p-6 pt-4 md:p-10 md:pt-6 space-y-10">
+    {query.trim() ? (
+    <>
+      {/* Gộp kết quả từ songs và artists */}
+      {(() => {
+        // 1. Gộp tất cả bài hát từ artists
+        const artistSongs = (searchResults.artists || []).flatMap((artist) => artist.songs || []);
 
+        // 2. Gộp và loại bỏ bài hát trùng ID
+        const allSongsMap = new Map();
+
+        // Bài hát tìm theo tên bài hát
+        (searchResults.songs || []).forEach((s) => {
+          allSongsMap.set(s._id || s.id, s);
+        });
+
+        // Bài hát tìm được từ artist
+        artistSongs.forEach((s) => {
+          if (!allSongsMap.has(s._id || s.id)) {
+            allSongsMap.set(s._id || s.id, s);
+          }
+        });
+
+        const combinedSongs = Array.from(allSongsMap.values());
+
+        return combinedSongs.length > 0 ? (
+          <div>
+            <h2 className="text-2xl font-semibold mb-2">Results</h2>
+            <SongList
+              songs={combinedSongs.map((s) => ({
+                id: s.id || s._id,
+                title: s.title,
+                artist: s.artist?.name || s.artist,
+                artistId: s.artist?._id || s.artistId,
+                album: s.album && s.album.trim() !== "" ? s.album : "N/A",
+                duration: s.duration || 0,
+                coverArt: s.coverArt || "/placeholder.svg",
+                genre: s.genre,
+                publisher: s.publisher,
+                refreshPlaylist,
+              }))}
+            />
+          </div>
+        ) : (
+          <p className="text-gray-400">No results found for "{query}".</p>
+        );
+      })()}
+    </>
+    ) : (
+    <PlaylistSongList songs={validSongs} playlistId={playlist.id} />
+    )}
+   </div>
       {showEditModal && (
         <PlaylistModal
           open={showEditModal}

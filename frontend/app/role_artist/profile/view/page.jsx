@@ -1,71 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { fetchLikedSongs, fetchHistory } from "@/lib/api/user";
-import { getAllPlaylists } from "@/lib/api/playlists";
-import SongList from "@/components/songs/song-list";
-import PlaylistGrid from "@/components/playlist/playlist-grid";
+import ProfileAccountSetting from "@/components/settings/page";
 
 export default function ArtistProfileView() {
   const { user, loading: authLoading } = useAuth();
-  const [likedSongs, setLikedSongs] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [playlists, setPlaylists] = useState([]);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    if (authLoading) return;
-
-    if (!user) {
+    if (!authLoading && !user) {
       router.push("/signin");
-      return;
     }
+  }, [authLoading, user, router]);
 
-const loadData = async () => {
-  try {
-    const [liked, historyRes, playlistData] = await Promise.all([
-      fetchLikedSongs(),
-      fetchHistory(user.id),
-      getAllPlaylists(), // nếu không cần user.id
-    ]);
-
-    setLikedSongs(
-      (liked.liked || []).map((song) => ({
-        id: song._id || song.id,
-        title: song.title,
-        artist: song.artist,
-        coverArt: song.coverArt,
-        audioUrl: song.audioUrl,
-      }))
-    );
-
-    setHistory(
-      (historyRes.history || []).map((item) => ({
-        id: item.song_info?.id,
-        title: item.song_info?.title,
-        artist: item.song_info?.artist,
-        coverArt: item.song_info?.coverArt,
-        audioUrl: item.song_info?.audioUrl,
-      }))
-    );
-
-    setPlaylists(playlistData || []);
-  } catch (error) {
-    console.error("❌ Error loading profile view:", error);
-    router.push("/signin");
-  } finally {
-    setLoading(false);
-  }
-};
-
-    loadData();
-  }, [user, authLoading]);
-
-  if (authLoading || loading) {
+  if (authLoading || !user) {
     return <div className="flex justify-center items-center h-[60vh]">Loading...</div>;
   }
 
@@ -100,22 +51,9 @@ const loadData = async () => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="space-y-10">
-        <section>
-          <h2 className="text-2xl font-semibold text-purple-400 mb-3">Playlists</h2>
-          <PlaylistGrid playlists={playlists} />
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold text-purple-400 mb-3">Liked Songs</h2>
-          <SongList songs={likedSongs} />
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold text-purple-400 mb-3">Listening History</h2>
-          <SongList songs={history} />
-        </section>
+      {/* Account Settings */}
+      <div className="mt-16">
+        <ProfileAccountSetting />
       </div>
     </div>
   );

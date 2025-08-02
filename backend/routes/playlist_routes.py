@@ -173,3 +173,4 @@ async def get_songs_in_playlist(playlist_id: str):
         del song["_id"]
 
     return {"songs": songs}
+
