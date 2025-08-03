@@ -1,8 +1,8 @@
 {
-  "/page": "app/page.js",
-  "/profile/settings/page": "app/profile/settings/page.js",
-  "/album/[id]/page": "app/album/[id]/page.js",
-  "/signin/page": "app/signin/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/role_artist/profile/view/page": "app/role_artist/profile/view/page.js",
   "/role_artist/dashboard/page": "app/role_artist/dashboard/page.js",
-  "/role_artist/songs/page": "app/role_artist/songs/page.js"
+  "/role_artist/profile/edit/page": "app/role_artist/profile/edit/page.js",
+  "/signin/page": "app/signin/page.js",
+  "/page": "app/page.js"
 }
