@@ -8,14 +8,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { Music, User, Disc, PlayCircle, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import SongList from "@/components/songs/song-list";
-import PlaylistGrid from "@/components/playlist/playlist-grid";
 import ArtistAbout from "./ArtistAbout";
+import { useMusic } from "@/context/music-context";
 
 export default function ArtistDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [artist, setArtist] = useState(null);
   const [songs, setSongs] = useState([]);
   const [albums, setAlbums] = useState([]);
+  const { playSong, setContext } = useMusic();
+
   const [loading, setLoading] = useState(true);
   const [songIndex, setSongIndex] = useState(0);
   const [featuredSong, setFeaturedSong] = useState(null);
@@ -180,10 +182,19 @@ export default function ArtistDashboard() {
               </div>
             </div>
             <div className="flex gap-4 flex-wrap">
-              {featuredSong && (
-                <div className="btn-primary flex items-center gap-2 cursor-default opacity-60">
-                  <PlayCircle size={18} /> Listen Now
-                </div>
+            {featuredSong && (
+            <button
+            onClick={() => {
+            const startIndex = songs.findIndex((s) => s.id === featuredSong.id);
+            const orderedSongs = [...songs.slice(startIndex), ...songs.slice(0, startIndex)];
+            setSongs(orderedSongs);
+            setContext("artist-dashboard");
+            playSong(featuredSong);
+            }}
+            className="btn-primary flex items-center gap-2"
+             >
+           <PlayCircle size={18} /> Listen Now
+            </button>
               )}
               <div className="btn-secondary cursor-default opacity-60">
                 View Artist
@@ -215,25 +226,50 @@ export default function ArtistDashboard() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Recent Songs</h2>
-              <SongList songs={songs.slice(0, 5)} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Recent Albums</h2>
-              <PlaylistGrid
-                playlists={albums.slice(0, 4).map((album) => ({
-                  id: album.id,
-                  title: album.title,
-                  slug: album.id,
-                  coverArt: album.cover_art?.startsWith("http")
-                    ? album.cover_art
-                    : `http://localhost:8000/${album.cover_art}`,
-                  creator: artist?.name || "Unknown",
-                }))}
-              />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         <div>
+          <h2 className="text-2xl font-bold mb-4">Recent Songs</h2>
+          <SongList songs={songs.slice(0, 5)} />
+          </div>
+           <div>
+           <h2 className="text-2xl font-bold mb-4">Recent Albums</h2>
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {albums.slice(0, 4).map((album) => {
+          const imageUrl = (() => {
+          const raw = album.cover_image || album.cover_art;
+
+          if (raw?.startsWith("http")) return raw;
+          if (raw) return `http://localhost:8000/${raw.replace(/^\/+/, "")}`;
+
+          // fallback nếu không có gì
+          return "/placeholder.svg";
+           })();
+
+        return (
+      <Link
+      key={album.id}
+      href={`/album/${album.id}`}
+      className="group rounded-lg overflow-hidden shadow hover:shadow-lg transition-all"
+      >
+      <div className="relative aspect-square w-full min-h-[200px] rounded-md overflow-hidden bg-gray-800">
+        <Image
+          src={imageUrl}
+          alt={album.title}
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
+        />
+      </div>
+      <div className="mt-2">
+        <h3 className="text-sm font-semibold truncate">{album.title}</h3>
+        <p className="text-xs text-muted-foreground truncate">
+          {artist?.name || "Unknown"}
+        </p>
+      </div>
+      </Link>
+      );
+      })}
+        </div>
+         </div>
           </div>
 
           {/* About Section */}
@@ -246,19 +282,43 @@ export default function ArtistDashboard() {
           <SongList songs={songs} />
         </TabsContent>
 
-        <TabsContent value="albums" className="mt-6">
-          <PlaylistGrid
-            playlists={albums.map((album) => ({
-              id: album.id,
-              title: album.title,
-              slug: album.id,
-              coverArt: album.cover_art?.startsWith("http")
-                ? album.cover_art
-                : `http://localhost:8000/${album.cover_art}`,
-              creator: artist?.name || "Unknown",
-            }))}
-          />
-        </TabsContent>
+      <TabsContent value="albums" className="mt-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      {albums.map((album) => {
+      const imageUrl = (() => {
+      const raw = album.cover_image || album.cover_art;
+
+      if (raw?.startsWith("http")) return raw;
+      if (raw) return `http://localhost:8000/${raw.replace(/^\/+/, "")}`;
+
+      // fallback nếu không có gì
+      return "/placeholder.svg";
+      })();
+      return (
+        <Link
+          key={album.id}
+          href={`/album/${album.id}`}
+          className="group rounded-lg overflow-hidden shadow hover:shadow-lg transition-all"
+        >
+          <div className="relative aspect-square w-full rounded-md overflow-hidden bg-gray-800">
+            <Image
+              src={imageUrl}
+              alt={album.title}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+          <div className="mt-2">
+            <h3 className="text-sm font-semibold truncate">{album.title}</h3>
+            <p className="text-xs text-muted-foreground truncate">
+              {artist?.name || "Unknown"}
+            </p>
+          </div>
+        </Link>
+       );
+      })}
+    </div>
+    </TabsContent>
       </Tabs>
     </div>
   );

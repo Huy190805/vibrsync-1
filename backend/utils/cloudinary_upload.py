@@ -91,3 +91,19 @@ CLOUDINARY_BASE_URL = f"https://res.cloudinary.com/{os.getenv('CLOUDINARY_CLOUD_
 def upload_image(file_path: str) -> dict:
     result = cloudinary.uploader.upload(file_path, folder="avatars")
     return result  # Return full response dict (includes secure_url, public_id, etc.)
+
+# ✅ Upload artist image
+def upload_image_artist(file_path: str) -> str | None:
+    try:
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        result = cloudinary.uploader.upload(
+            file_path,
+            resource_type="image",
+            folder="artists/",
+            public_id=file_name,
+            overwrite=True
+        )
+        return result.get("secure_url")
+    except Exception as e:
+        print("❌ Upload artist image failed:", e)
+        return None
