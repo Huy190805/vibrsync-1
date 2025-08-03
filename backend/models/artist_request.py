@@ -7,7 +7,9 @@ class ArtistRequestBase(BaseModel):
     
     name: str
     bio: Optional[str] = None
+    genres: List[str] = []
     phone: Optional[str] = None
+    image: Optional[str] = None
     social_links: List[HttpUrl] = []
 
 class ArtistRequestCreate(ArtistRequestBase):

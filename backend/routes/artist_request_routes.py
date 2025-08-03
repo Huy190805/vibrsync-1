@@ -1,11 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from models.artist_request import ArtistRequestCreate, ArtistRequestInDB
 from services.artist_request_service import ArtistRequestService
 from database.repositories.artist_request_repository import ArtistRequestRepository
 from models.user import User 
 from auth import get_current_user, get_current_admin
 from typing import List
+from bson import ObjectId
+from bson.errors import InvalidId
+import shutil
+import os
 from datetime import datetime
+from utils.cloudinary_upload import upload_image_artist
 router = APIRouter(prefix="/api/artist_requests", tags=["artist_requests"])
 
 @router.post("", response_model=ArtistRequestInDB)
@@ -65,3 +70,29 @@ async def delete_artist_request(request_id: str, current_user: dict = Depends(ge
     if not success:
         raise HTTPException(status_code=404, detail="Request not found or failed to delete")
     return {"message": "Artist request deleted"}
+
+@router.post("/{artist_id}/upload-image")
+async def upload_artist_image(artist_id: str, file: UploadFile = File(...)):
+    # 📁 Tạm lưu ảnh vào ổ đĩa
+    temp_path = f"temp_{file.filename}"
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    #☁️ Upload lên Cloudinary
+    cloudinary_url = upload_image_artist(temp_path)
+
+    # 🧹 Xoá file tạm
+    os.remove(temp_path)
+
+    if not cloudinary_url:
+        raise HTTPException(status_code=500, detail="Image upload failed")
+
+    # ✅ Cập nhật DB: gán cloudinary_url vào field "image"
+    repo = ArtistRequestRepository()
+    success = repo.update(artist_id, {"image": cloudinary_url})
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Artist request not found")
+
+    return {"message": "Uploaded successfully", "image_url": cloudinary_url}
+

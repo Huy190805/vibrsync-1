@@ -41,4 +41,5 @@ class ArtistRepository:
         return matched_artists
 
     
-    
+    def update_by_id(self, artist_id: ObjectId, update_dict: dict):
+        return self.collection.update_one({"_id": artist_id}, {"$set": update_dict})

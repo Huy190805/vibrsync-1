@@ -2,9 +2,11 @@ from database.repositories.artist_repository import ArtistRepository
 from database.repositories.song_repository import SongRepository
 from database.repositories.album_repository import AlbumRepository
 from bson import ObjectId
+from models.artist import ArtistUpdate
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+from datetime import datetime
 
 from services.follow_service import FollowService  # ✅ IMPORT
 
@@ -16,7 +18,6 @@ class ArtistProfileService:
         self.follow_service = FollowService()  # ✅ KHAI BÁO
 
     def get_artist_profile(self, artist_id: str):
-        print(f"🚀 Fetching artist profile for ID: {artist_id}")
 
         try:
             artist = self.artist_repo.find_by_id(ObjectId(artist_id))
@@ -48,7 +49,6 @@ class ArtistProfileService:
             }
             songs = self.song_repo.find_all(query=query)
         except Exception as e:
-            print(f"❌ Error fetching songs: {e}")
             songs = []
 
         for s in songs:
@@ -62,7 +62,6 @@ class ArtistProfileService:
         try:
             albums = self.album_repo.find_by_artist_id(artist_id)
         except Exception as e:
-            print(f"❌ Error fetching albums: {e}")
             albums = []
 
         for a in albums:
@@ -80,3 +79,24 @@ class ArtistProfileService:
 
         return JSONResponse(content=jsonable_encoder(response_data))
 
+
+    def update_artist_profile(self, artist_id: str, update_data: ArtistUpdate):
+        try:
+            artist = self.artist_repo.find_by_id(ObjectId(artist_id))
+        except Exception as e:
+            print(f"❌ Invalid artist_id: {e}")
+            raise HTTPException(status_code=400, detail="Invalid artist ID")
+
+        if not artist:
+            raise HTTPException(status_code=404, detail="Artist not found")
+
+        update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
+        update_dict["updated_at"] = datetime.utcnow()
+
+        try:
+            self.artist_repo.update_by_id(ObjectId(artist_id), update_dict)
+        except Exception as e:
+            print(f"❌ Update failed: {e}")
+            raise HTTPException(status_code=500, detail="Update failed")
+
+        return JSONResponse(content={"message": "Artist profile updated successfully."})

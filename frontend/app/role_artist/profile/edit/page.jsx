@@ -60,28 +60,34 @@ export default function EditArtistProfile() {
   }, [user, router]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/api/artist/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
+  e.preventDefault();
+  setError("");
+  setSuccess("");
 
-      if (!res.ok) throw new Error("Update failed");
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:8000/api/artist/profile", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(formData),
+    });
 
-      setSuccess("🎉 Profile updated successfully!");
-      setTimeout(() => router.push("/role_artist/profile/view"), 1500);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+    if (!res.ok) throw new Error("Update failed");
+
+    setSuccess("🎉 Profile updated successfully!");
+
+    // Optional: reset success message after a delay
+    setTimeout(() => {
+      setSuccess("");
+    }, 3000);
+    
+  } catch (err) {
+    setError(err.message);
+  }
+};
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];

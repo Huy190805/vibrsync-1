@@ -33,31 +33,7 @@ export default function ArtistAbout({ artist }) {
   };
 
   const handleSave = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const formData = new FormData();
-      formData.append("bio", bio);
-      if (file) {
-        formData.append("image", file);
-      }
-
-      const res = await fetch("http://localhost:8000/api/artist/update-profile", {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error("Failed to update profile");
-
-      setEditing(false);
-      setShowModal(false);
-      alert("✅ Cập nhật thành công!");
-    } catch (err) {
-      console.error("❌ Error:", err.message);
-      alert("❌ Thất bại khi cập nhật");
-    }
+    alert("🔒 Bạn hãy chuyển sang tab Edit Profile (read-only).");
   };
 
   const modal = (
