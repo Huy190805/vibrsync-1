@@ -1,20 +1,19 @@
-// components/chatbot/ChatBoxLauncher.jsx
 "use client";
 
 import { useState, useEffect } from "react";
 import ChatBox from "./ChatBox";
+import { useAuth } from "@/context/auth-context";
 
 export default function ChatBoxLauncher() {
   const [isChatOpen, setIsChatOpen] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("isChatOpen");
-    if (saved === "true") setIsChatOpen(true);
-  }, []);
+  const { isAuthenticated, loading } = useAuth(); // ✅ Dùng từ context
 
   useEffect(() => {
     localStorage.setItem("isChatOpen", isChatOpen.toString());
   }, [isChatOpen]);
+
+  if (loading) return null; // ⏳ Đợi xác thực xong mới hiển thị
+  if (!isAuthenticated) return null; // 🔒 Không hiển thị nếu chưa đăng nhập
 
   return (
     <>

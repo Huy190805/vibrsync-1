@@ -1,19 +1,42 @@
 from database.db import artists_collection
 from bson import ObjectId
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 from models.song import SongCreate, SongUpdate, SongInDB
 from database.repositories.song_repository import SongRepository
 from database.repositories.artist_repository import ArtistRepository
 from urllib.request import urlopen
 from urllib.error import HTTPError
 from random import shuffle
+from urllib.error import HTTPError
+from fastapi import HTTPException
+from database.db import albums_collection
+from database.repositories.album_repository import AlbumRepository
+from utils.text_utils import normalize_text
+
+import difflib
 
 class SongService:
     def __init__(self, song_repository: SongRepository, artist_repository: ArtistRepository):
         self.song_repository = song_repository
         self.artist_repository = artist_repository
+        self.album_repo = AlbumRepository(albums_collection) 
 
+    def find_song_by_fuzzy_title(self, query: str):
+        songs = self.song_repository.get_all_songs_simple()
+        query_norm = normalize_text(query)
+
+        titles = [normalize_text(song["title"]) for song in songs]
+        matches = difflib.get_close_matches(query_norm, titles, n=1, cutoff=0.6)
+
+        if matches:
+            matched_title = matches[0]
+            for song in songs:
+                if normalize_text(song["title"]) == matched_title:
+                    return song
+
+        return None
+    
     @staticmethod
     def _map_to_song_in_db(song: dict) -> SongInDB:
         return SongInDB(
@@ -83,6 +106,23 @@ class SongService:
 
     def delete_song(self, song_id: str) -> bool:
         return self.song_repository.delete(song_id)
+    
+        # services/song_service.py
+    def get_all_songs_simple(self) -> List[Dict]:
+        try:
+            raw_songs = self.song_repository.get_all_songs_simple()
+            return [
+                {
+                    "title": song.get("title", ""),
+                    "song_id": str(song.get("_id", "")),
+                    "artist": song.get("artist", ""),
+                    "artistId": str(song.get("artistId", "")),
+                    "releaseYear": song.get("releaseYear", ""),
+                }
+                for song in raw_songs
+            ]
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Lỗi lấy bài hát: {str(e)}")
 
     def get_random_songs(self, limit: int = 10, region: Optional[str] = None) -> List[SongInDB]:
         raw_songs = self.song_repository.get_random_songs(limit=limit * 3)

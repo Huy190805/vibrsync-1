@@ -4,13 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import { X, Trash2 } from "lucide-react";
 import styles from "./chatbox.module.css";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 
 export default function ChatBox({ isOpen, onClose }) {
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
+  const [isBotTyping, setIsBotTyping] = useState(false);
+  const [typingText, setTypingText] = useState("");
   const chatLogRef = useRef(null);
 
-  // Lấy user_id và tên khách hàng từ localStorage
   const getUserId = () => {
     try {
       const userStr = localStorage.getItem("user");
@@ -18,7 +22,7 @@ export default function ChatBox({ isOpen, onClose }) {
         const userObj = JSON.parse(userStr);
         return {
           id: userObj._id || userObj.id || null,
-          name: userObj.name || "Khách hàng", // Lấy tên, nếu không có thì dùng mặc định
+          name: userObj.name || "Khách hàng",
         };
       }
     } catch {
@@ -33,7 +37,6 @@ export default function ChatBox({ isOpen, onClose }) {
     }
   };
 
-  // Lấy lịch sử và thêm lời chào khi mở
   useEffect(() => {
     const fetchChatHistory = async () => {
       const user = getUserId();
@@ -51,7 +54,6 @@ export default function ChatBox({ isOpen, onClose }) {
         const res = await fetch(`http://localhost:8000/chat/history/${user.id}`);
         const data = await res.json();
         if (res.ok) {
-          // Thêm lời chào vào lịch sử nếu không có tin nhắn trước đó
           const history = data.history || [];
           if (history.length === 0) {
             setChatHistory([
@@ -78,7 +80,23 @@ export default function ChatBox({ isOpen, onClose }) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [chatHistory]);
+  }, [chatHistory, isBotTyping, typingText]);
+
+  const simulateTyping = (text) => {
+    setTypingText("");
+    let index = 0;
+    const interval = setInterval(() => {
+      if (index < text.length) {
+        setTypingText((prev) => prev + text.charAt(index));
+        index++;
+      } else {
+        clearInterval(interval);
+        setChatHistory((prev) => [...prev, { text, sender: "bot" }]);
+        setTypingText("");
+        setIsBotTyping(false);
+      }
+    }, 30);
+  };
 
   const handleSend = async (e) => {
     if (e.type === "click" || (e.key === "Enter" && message.trim())) {
@@ -98,10 +116,10 @@ export default function ChatBox({ isOpen, onClose }) {
         return;
       }
 
-      // Hiện tin nhắn của người dùng
       const userMsg = { text: trimmed, sender: "user" };
       setChatHistory((prev) => [...prev, userMsg]);
       setMessage("");
+      setIsBotTyping(true);
 
       try {
         const res = await fetch("http://localhost:8000/chat", {
@@ -113,26 +131,13 @@ export default function ChatBox({ isOpen, onClose }) {
         const data = await res.json();
 
         if (res.ok && data.response) {
-          const botMsg = { text: data.response, sender: "bot" };
-          setChatHistory(data.history); // Cập nhật luôn toàn bộ lịch sử mới từ server
+          simulateTyping(data.response);
         } else {
-          setChatHistory((prev) => [
-            ...prev,
-            {
-              text: "🤖 Không có phản hồi từ AI.",
-              sender: "bot",
-            },
-          ]);
+          simulateTyping("🤖 Không có phản hồi từ AI.");
         }
       } catch (err) {
         console.error("Lỗi gửi tin nhắn:", err);
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            text: "❌ Lỗi khi gửi yêu cầu đến máy chủ.",
-            sender: "bot",
-          },
-        ]);
+        simulateTyping("❌ Lỗi khi gửi yêu cầu đến máy chủ.");
       }
     }
   };
@@ -161,57 +166,86 @@ export default function ChatBox({ isOpen, onClose }) {
     }
   };
 
-  if (!isOpen) return null;
 
+  // code mới gửi kèm ảnh
   const renderMessageText = (text) => {
-    const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-    const elements = [];
-    let lastIndex = 0;
-    let match;
+  const markdownImageRegex = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;
+  const markdownLinkRegex = /\[([^\]]+)\]\((\/[^\s)]+|https?:\/\/[^\s)]+)\)/g;
 
-    while ((match = markdownLinkRegex.exec(text)) !== null) {
-      const [fullMatch, label, url] = match;
-      const start = match.index;
 
-      if (start > lastIndex) {
-        elements.push(<span key={lastIndex}>{text.slice(lastIndex, start)}</span>);
-      }
+  const elements = [];
+  let lastIndex = 0;
 
-      const isInternal = url.startsWith("http://localhost:3000");
-      const href = isInternal ? url.replace("http://localhost:3000", "") : url;
+  // Kết hợp xử lý cả ảnh và link bằng cách gom chung lại theo vị trí xuất hiện
+  const matches = [...text.matchAll(markdownImageRegex), ...text.matchAll(markdownLinkRegex)]
+    .map((match) => ({ ...match, index: match.index }))
+    .sort((a, b) => a.index - b.index);
+
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    const start = match.index;
+
+    if (start > lastIndex) {
+      elements.push(<span key={lastIndex}>{text.slice(lastIndex, start)}</span>);
+    }
+
+    if (match[0].startsWith("!")) {
+      // Ảnh markdown
+      const alt = match[1];
+      const src = match[2];
+      elements.push(
+        <img
+          key={start}
+          src={src}
+          alt={alt}
+          style={{ maxWidth: "100%", borderRadius: "12px", margin: "10px 0" }}
+        />
+      );
+    } else {
+      // Link markdown
+      const label = match[1];
+      const url = match[2];
+      const isInternal = url.startsWith("http://localhost:3000") || url.startsWith("https://yourdomain.com");
+      const href = isInternal
+        ? url.replace("http://localhost:3000", "").replace("https://yourdomain.com", "")
+        : url;
 
       elements.push(
         isInternal ? (
-          <Link key={start} href={href} className="text-blue-500 underline">
+          <Link key={start} href={href} className={styles.linkButton}>
             {label}
           </Link>
         ) : (
           <a
             key={start}
-            href={href}
+            href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-500 underline"
+            className={styles.linkButton}
           >
             {label}
           </a>
         )
       );
-
-      lastIndex = start + fullMatch.length;
     }
 
-    if (lastIndex < text.length) {
-      elements.push(<span key={lastIndex}>{text.slice(lastIndex)}</span>);
-    }
+    lastIndex = start + match[0].length;
+  }
 
-    return elements;
-  };
+  if (lastIndex < text.length) {
+    elements.push(<span key={lastIndex}>{text.slice(lastIndex)}</span>);
+  }
+
+  return elements;
+};
+
+
+  if (!isOpen) return null;
 
   return (
     <div className={styles.chatContainer}>
       <div className={styles.chatHeader}>
-        <span className="font-bold">Trợ lý AI</span>
+        <span className="font-bold">MUSIC AI</span>
         <div className="flex items-center gap-2">
           <button onClick={handleClearHistory} title="Xoá lịch sử">
             <Trash2 className="w-4 h-4 text-red-500" />
@@ -245,6 +279,15 @@ export default function ChatBox({ isOpen, onClose }) {
             </div>
           </div>
         ))}
+
+        {isBotTyping && typingText && (
+          <div className={`${styles.messageWrapper} ${styles.messageBotWrapper}`}>
+            <img src="/robot.jpg" alt="Bot Avatar" className={styles.avatar} />
+            <div className={`${styles.message} ${styles.messageBot}`}>
+              {renderMessageText(typingText)}<span className={styles.cursor}>|</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className={styles.chatInput}>
