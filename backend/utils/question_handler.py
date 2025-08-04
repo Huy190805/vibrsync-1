@@ -7,6 +7,10 @@ from services.song_service import SongService
 from database.repositories.artist_repository import ArtistRepository
 from database.repositories.song_repository import SongRepository
 from services.album_service import AlbumService
+from database.db import songs_collection, artists_collection, albums_collection
+from database.repositories.album_repository import AlbumRepository
+from services.song_service import SongService
+from utils.text_utils import normalize_text
 
 
 # ======== Chuẩn hóa văn bản ==========
@@ -45,8 +49,35 @@ def search_artist(query: str, all_artists: list[str]):
 # ======== Khởi tạo service ==========
 artist_repo = ArtistRepository()
 song_repo = SongRepository()
+album_repo = AlbumRepository()
 artist_service = ArtistService()
 song_service = SongService(song_repo, artist_repo)
+
+
+def handle_user_input(user_input: str):
+    query = normalize_text(user_input)
+
+    # 1. Ưu tiên kiểm tra có bài hát nào gần đúng không
+    song = song_service.find_song_by_fuzzy_title(query)
+    if song:
+        return {
+            "type": "song",
+            "title": song["title"],
+            "artist": song["artist"],
+            "coverArt": song.get("coverArt", ""),
+            "releaseYear": song.get("releaseYear", ""),
+            "link": f"/songs/{song['_id']}"
+        }
+
+    # 2. (optional) Kiểm tra nghệ sĩ, album, v.v.
+    # artist = artist_service.find_artist_by_fuzzy_name(query)
+    # if artist:
+    #     return ...
+
+    # 3. Fallback gọi Gemini
+    return ask_gemini(user_input)
+
+
 
 artist_service = ArtistService()
 
@@ -66,28 +97,70 @@ except Exception:
     SONGS_DATA = []
 
 # ======== Tạo danh sách tìm kiếm mềm ==========
+ARTISTS_DATA = list(artists_collection.find({}))
 ARTIST_ENTRIES = [
     {
-        "name": artist["name"],
-        "aliases": artist.get("aliases", []),
+        "artist_id": str(artist["_id"]),
+        "name": artist.get("name", ""),
         "bio": artist.get("bio", ""),
+        "genres": artist.get("genres", []),
+        "followers": artist.get("followers", 0),
+        "normalizedName": artist.get("normalizedName", normalize_text(artist["name"])),
         "url": f"http://localhost:3000/artist/{artist['_id']}",
-        "keywords": [normalize_text(artist["name"])] + [normalize_text(alias) for alias in artist.get("aliases", [])],
+        "image": artist.get("image", ""),
+        "keywords": (
+            [normalize_text(artist["name"])] +
+            [normalize_text(artist["name"]).replace(" ", "")]
+        ),
     }
     for artist in ARTISTS_DATA
 ]
 
+
+SONGS_DATA = list(songs_collection.find({}))
 SONG_ENTRIES = [
     {
-        "title": song["title"],
+        "type": "song", 
+        "song_id": str(song["_id"]),
+        "title": song.get("title", ""),
         "artist": song.get("artist", ""),
         "artistId": str(song.get("artistId", "")),
+        "album": song.get("album", ""),
         "releaseYear": song.get("releaseYear", ""),
-        "url": f"http://localhost:3000/song/{song['song_id']}",
-        "keywords": [normalize_text(song["title"])],
+        "duration": song.get("duration", ""),
+        "genres": song.get("genre", []),
+        "lyrics": song.get("lyrics_lrc", ""),
+        "audioUrl": song.get("audioUrl", ""),
+        "image": song.get("coverArt", ""),
+        "url": f"http://localhost:3000/song/{song['_id']}",
+        "keywords": (
+            [normalize_text(song["title"])] +
+            [normalize_text(song["title"]).replace(" ", "")]
+        ),
     }
     for song in SONGS_DATA
 ]
+
+
+albums = list(albums_collection.find({}))
+
+ALBUM_ENTRIES = []
+for album in albums:
+    # Lấy các trường cần thiết
+    album_entry = {
+        "title": album.get("title", ""),
+        "album_id": str(album.get("_id", "")),
+        "artist_id": str(album.get("artist_id", "")),  # QUAN TRỌNG
+        "release_year": album.get("release_year", ""),
+        "cover_image": album.get("cover_image", ""),
+        "url": f"http://localhost:3000/album/{str(album['_id'])}",
+        "keywords": [normalize_text(album.get("title", ""))],
+        "image": album.get("cover_image", ""),
+
+    }
+    ALBUM_ENTRIES.append(album_entry)
+
+
 
 # ======== Câu hỏi định nghĩa sẵn ==========
 CUSTOM_RESPONSES = {
@@ -129,6 +202,7 @@ CUSTOM_RESPONSES = {
     },
 }
 
+
 # ========== HÀM XỬ LÝ CHÍNH ==========
 
 async def handle_user_question(prompt: str) -> str:
@@ -141,25 +215,27 @@ async def handle_user_question(prompt: str) -> str:
             if normalize_text(question) in norm_prompt:
                 return group["answer_vi"] if language == "vi" else group["answer_en"]
 
-    # 2. Nhắc người dùng nếu không rõ
-    MUSIC_KEYWORDS = [normalize_text(w) for w in ["bài hát", "ca sĩ", "nhạc", "nghệ sĩ", "song", "artist", "music"]]
-    if len(norm_prompt.split()) <= 5 and not any(word in norm_prompt for word in MUSIC_KEYWORDS):
-        return (
-            "❗ Câu hỏi của bạn chưa rõ ràng. Vui lòng nói rõ bạn đang tìm *bài hát*, *ca sĩ*, hoặc thể loại nhạc nào 🎵.\n"
-            "Ví dụ: *'bài hát Yêu Một Người Có Lẽ'* hoặc *'ca sĩ Sơn Tùng M-TP'*."
-            if language == "vi" else
-            "❗ Your question is unclear. Please specify whether you're looking for a *song*, *artist*, or *music genre* 🎵.\n"
-            "Example: *'song Love Someone Like You'* or *'artist Taylor Swift'*."
-        )
+   
     
-    
-
     # 3. Enrich prompt nếu quá ngắn
-    enriched_prompt = prompt
-    if len(prompt.split()) == 1 and " " not in prompt and not any(c in prompt for c in "?!"):
+    # ===== Enrich nếu đầu vào không chứa từ khóa nhạc =====
+    MUSIC_KEYWORDS = [normalize_text(w) for w in ["bài hát", "ca sĩ", "nhạc", "nghệ sĩ", "album", "song", "artist", "music"]]
+    if not any(word in normalize_text(prompt) for word in MUSIC_KEYWORDS):
         enriched_prompt = f"bài hát {prompt}" if language == "vi" else f"song {prompt}"
+        norm_prompt = normalize_text(enriched_prompt)
+    else:
+        enriched_prompt = prompt
+        norm_prompt = normalize_text(prompt)
 
-    # 4. So khớp gần đúng
+
+    # 4. Xác định loại câu hỏi: bài hát / nghệ sĩ / album
+    if any(key in norm_prompt for key in ["album", "list", "những", "nhiều bài", "nhiều", "tên album"]):
+        search_entries = ALBUM_ENTRIES
+    else:
+        search_entries = ARTIST_ENTRIES + SONG_ENTRIES
+
+
+    # 5. So khớp gần đúng
     def get_similarity(a, b):
         if b in a or a in b:
             return 1.0
@@ -168,81 +244,194 @@ async def handle_user_question(prompt: str) -> str:
     best_entry = None
     best_score = 0.0
 
-    for entry in ARTIST_ENTRIES + SONG_ENTRIES:
+    for entry in search_entries:
         for keyword in entry["keywords"]:
             score = get_similarity(norm_prompt, keyword)
             if score > best_score:
                 best_score = score
                 best_entry = entry
 
-    # 5. Nếu khớp dữ liệu nghệ sĩ hoặc bài hát
+    # 6. Nếu khớp dữ liệu nghệ sĩ, bài hát, hoặc album
     if best_entry and best_score >= 0.6:
+        print(f"[DEBUG] best_entry = {best_entry}, score = {best_score}")
+
         name = best_entry.get("name") or best_entry.get("title")
         extra_info = ""
-        artist_name = ""
-        artist_bio = ""
-        release_year = ""
 
-        if "bio" in best_entry:  # Entry là nghệ sĩ
+        if "bio" in best_entry:  # Nghệ sĩ
             artist_name = best_entry["name"]
             artist_bio = best_entry.get("bio", "").strip()
+            artist_image = best_entry.get("image", "")
+            artist_url = best_entry.get("url", "")
+            artist_id = best_entry.get("artist_id", "")
 
-            extra_info = (
-                f"Giới thiệu về nghệ sĩ {artist_name}.\nĐây là mô tả của họ: {artist_bio}"
-                if language == "vi" and artist_bio else
-                f"Giới thiệu về nghệ sĩ {artist_name}."
-                if language == "vi" else
-                f"Introduce the artist {artist_name}.\nHere is their bio: {artist_bio}"
-                if artist_bio else
-                f"Introduce the artist {artist_name}."
-            )
+            # Từ khóa thể hiện ý muốn nghe danh sách bài hát
+            song_keywords = ["danh sách", "những bài", "list", "nhiều bài", "playlist", "các bài", "nghe nhạc"]
+            # Ví dụ trong phần if "bio" in best_entry:
+            is_asking_for_songs = any(kw in prompt.lower() for kw in song_keywords)
 
-        elif "title" in best_entry:  # Entry là bài hát
+
+            # ✅ Nếu người dùng hỏi về danh sách bài hát → không cần hỏi Gemini
+            if is_asking_for_songs:
+                reply_text = (
+                    f"Dưới đây là danh sách một số bài hát nổi bật của nghệ sĩ {artist_name}:"
+                    if language == "vi" else
+                    f"Here are some featured songs by artist {artist_name}:"
+                )
+            else:
+                # Prompt cho Gemini
+                extra_info = (
+                    f"Giới thiệu 1 đoạn ngắn về nghệ sĩ {artist_name}.\nĐây là mô tả của họ: {artist_bio}"
+                    if language == "vi" and artist_bio else
+                    f"Giới thiệu 1 đoạn ngắn về nghệ sĩ {artist_name}."
+                    if language == "vi" else
+                    f"Introduce the artist {artist_name}.\nHere is their bio: {artist_bio}"
+                    if artist_bio else
+                    f"Introduce the artist {artist_name}."
+                )
+                try:
+                    reply_text = await ask_gemini(extra_info)
+                except Exception:
+                    reply_text = extra_info  # fallback nếu lỗi Gemini
+
+            # Bắt đầu khởi tạo phần trả lời
+            reply = ""
+
+            if artist_image:
+                reply += f"![Ảnh nghệ sĩ]({artist_image})\n\n"
+
+            reply += reply_text
+
+            if artist_url:
+                reply += (
+                    f"\n\n👉 Bạn có thể xem thêm về nghệ sĩ: [{artist_name}]({artist_url})"
+                    if language == "vi" else
+                    f"\n\n👉 Learn more about the artist: [{artist_name}]({artist_url})"
+                )
+
+            # ✅ Luôn tìm danh sách bài hát dù câu hỏi là gì
+            songs_by_artist = [
+                s for s in SONG_ENTRIES
+                if s["artist"].lower() == artist_name.lower() or s.get("artistId", "") == artist_id
+            ]
+            if songs_by_artist:
+                reply += "\n\n🎵 " + ("Một số bài hát nổi bật:" if language == "vi" else "Some featured songs:") + "\n"
+                for s in songs_by_artist[:5]:  # giới hạn 5 bài
+                    reply += f"- [{s['title']}]({s['url']})\n"
+
+            return reply
+
+
+        
+
+        
+
+        elif best_entry.get("type") == "song":  # song
             song_title = best_entry.get("title", "bài hát không rõ")
             artist_name = best_entry.get("artist", "").strip()
-            artist_bio = ""
             release_year = best_entry.get("releaseYear", "")
+            song_id = best_entry.get("song_id", "")
+            artist_bio = ""
 
+            # Tìm tiểu sử nghệ sĩ nếu có
             for a in ARTISTS_DATA:
-                if a["name"].lower() == artist_name.lower() or str(a["artist_id"]) == best_entry.get("artistId", ""):
+                if a["name"].lower() == artist_name.lower() or str(a["_id"]) == best_entry.get("artistId", ""):
                     artist_bio = a.get("bio", "").strip()
                     break
 
+            # Cắt tiểu sử nếu quá dài
+            if artist_bio:
+                artist_bio = artist_bio[:400]
+
+            # Prompt cho Gemini
             if artist_name:
                 if artist_bio:
                     extra_info = (
-                        f"Hãy giới thiệu bài hát '{song_title}' của ca sĩ {artist_name} phát hành năm {release_year}.\n"
+                        f"Hãy giới thiệu ngắn bài hát '{song_title}' của ca sĩ {artist_name} phát hành năm {release_year}.\n"
                         f"Thông tin nghệ sĩ: {artist_bio}"
                         if language == "vi" else
-                        f"Describe in detail the song '{song_title}' by artist {artist_name}, released in {release_year}.\n"
+                        f"Describe the song '{song_title}' by artist {artist_name}, released in {release_year}.\n"
                         f"Artist bio: {artist_bio}"
                     )
                 else:
                     extra_info = (
-                        f"Hãy giới thiệu bài hát '{song_title}' của ca sĩ {artist_name} phát hành năm {release_year}."
+                        f"Hãy giới thiệu ngắn bài hát '{song_title}' của ca sĩ {artist_name} phát hành năm {release_year}."
                         if language == "vi" else
-                        f"Describe in detail the song '{song_title}' by artist {artist_name}, released in {release_year}."
+                        f"Describe the song '{song_title}' by artist {artist_name}, released in {release_year}."
                     )
             else:
                 extra_info = (
-                    f"Hãy mô tả bài hát '{song_title}'."
+                    f"Hãy mô tả ngắn bài hát '{song_title}'."
                     if language == "vi" else
                     f"Describe the song '{song_title}'."
                 )
 
-        enriched_prompt = extra_info
-        reply = await ask_gemini(enriched_prompt)
-        reply += f"\n\n👉 Bạn có thể xem thêm về: [{name}]({best_entry['url']})"
-        return reply
+            # Gọi Gemini
+            try:
+                reply = await ask_gemini(extra_info)
+            except Exception:
+                reply = extra_info
 
-    # 6. Nếu không khớp gì → gửi prompt gốc
-    reply = await ask_gemini(enriched_prompt)
-    reply += (
-        "\n\n❗ Website của chúng tôi chuyên về âm nhạc. "
-        "Vui lòng đặt câu hỏi liên quan đến playlist, ca sĩ, thể loại nhạc hoặc bài hát bạn muốn nghe 🎵."
-        if language == "vi" else
-        "\n\n❗ Our website focuses on music. Please ask questions about playlists, artists, genres, or songs you want to hear 🎵."
-    )
-    return reply
+            # Trả về phần markdown
+            response = ""
+
+            if best_entry.get("image"):
+                response += f"![Ảnh bài hát]({best_entry['image']})\n\n"
+
+            response += reply
+
+            if song_id:
+                response += (
+                    f"\n\n👉 Nghe bài hát: [{song_title}](http://localhost:3000/song/{song_id})"
+                    if language == "vi" else
+                    f"\n\n👉 Listen to the song: [{song_title}](http://localhost:3000/song/{song_id})"
+                )
+
+            return response
+
+
+        elif "album_id" in best_entry:  # Album
+            album_title = best_entry.get("title", "album không rõ")
+            release_year = best_entry.get("release_year", "")
+            artist_id = best_entry.get("artist_id", "")
+            
+            # Tìm tên nghệ sĩ
+            artist_name = ""
+            for artist in ARTISTS_DATA:
+                if str(artist["_id"]) == artist_id:
+                    artist_name = artist["name"]
+                    break
+
+            # Tạo prompt enrich
+            extra_info = (
+                f"Hãy giới thiệu về album '{album_title}' của ca sĩ {artist_name} phát hành năm {release_year}."
+                if language == "vi" else
+                f"Tell me about the album '{album_title}' by artist {artist_name}, released in {release_year}."
+            )
+
+            enriched_prompt = extra_info
+
+            try:
+                reply = await ask_gemini(enriched_prompt)
+            except Exception as e:
+                print("Gemini error:", e)
+                reply = (
+                    f"Album **{album_title}** của ca sĩ **{artist_name}** phát hành năm {release_year}."
+                    if language == "vi" else
+                    f"The album **{album_title}** by artist **{artist_name}**, released in {release_year}."
+                )
+
+            # Chèn ảnh album nếu có
+            if best_entry.get("image"):
+                reply = f"![Ảnh album]({best_entry['image']})\n\n" + reply
+
+            # Chèn link xem album nếu có
+            reply += (
+                f"\n\n👉 Bạn có thể xem thêm về album: [{album_title}]({best_entry['url']})"
+                if language == "vi" else
+                f"\n\n👉 You can learn more about the album: [{album_title}]({best_entry['url']})"
+            )
+
+            return reply
 
 

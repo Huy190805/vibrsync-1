@@ -3923,6 +3923,282 @@ body {
 
 
 
+/*!*********************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[5].use[3]!./components/chatbot/chatbox.module.css ***!
+  \*********************************************************************************************************************************************************************************************************************************************************************************/
+/* Thay đổi font chữ chính */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+.chatbox_chatContainer__rXU_d {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 400px;
+  height: 580px;
+  background-color: #1a1a1a;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.chatbox_hidden__T_x9W {
+  transform: translateY(100%);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.chatbox_chatHeader__d6H5O {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: linear-gradient(90deg, #0062ff, #0056e0);
+  color: #fff;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.chatbox_chatHeader__d6H5O button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  font-size: 20px;
+  transition: transform 0.2s ease;
+}
+
+.chatbox_chatHeader__d6H5O button:hover {
+  transform: scale(1.1);
+}
+
+.chatbox_chatLog__ALBcb {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #555 transparent;
+}
+
+/* Custom scrollbar cho Chrome, Edge, Safari */
+.chatbox_chatLog__ALBcb::-webkit-scrollbar {
+  width: 6px;
+}
+.chatbox_chatLog__ALBcb::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 3px;
+}
+
+.chatbox_messageWrapper__Q1cQQ {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  transition: all 0.2s ease;
+}
+
+.chatbox_messageUserWrapper__MQUT_ {
+  justify-content: flex-end;
+}
+
+.chatbox_messageBotWrapper__caq68 {
+  justify-content: flex-start;
+}
+
+.chatbox_message__Nuj90 {
+  max-width: 75%;
+  padding: 14px 20px;
+  border-radius: 20px;
+  font-size: 15px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.chatbox_messageUser___SKUm {
+  background-color: #007bff;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  font-weight: 500;
+}
+
+.chatbox_messageBot__OshI_ {
+  background-color: #3a3a3a;
+  color: #e9ecef;
+  border-bottom-left-radius: 4px;
+  font-weight: 400;
+}
+
+.chatbox_chatInput__IQWhy {
+  display: flex;
+  padding: 12px 16px;
+  background-color: #2a2a2a;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  gap: 12px;
+  transition: background-color 0.3s ease;
+}
+
+.chatbox_chatInput__IQWhy input {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 24px;
+  background-color: #3a3a3a;
+  color: #e9ecef;
+  font-size: 15px;
+  outline: none;
+  transition: background-color 0.3s ease, box-shadow 0.2s ease;
+}
+
+.chatbox_chatInput__IQWhy input::placeholder {
+  color: #a6a6a6;
+}
+
+.chatbox_chatInput__IQWhy input:focus {
+  background-color: #505050;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.4);
+}
+
+.chatbox_chatInput__IQWhy button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 24px;
+  background-color: #007bff;
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.chatbox_chatInput__IQWhy button:hover {
+  background-color: #0056b3;
+  transform: scale(1.05);
+}
+
+/* Phần wrapper cho tin nhắn */
+.chatbox_message-wrapper__1ZLNk {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.chatbox_message-wrapper__1ZLNk.chatbox_user__ArCwJ {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+
+.chatbox_message-wrapper__1ZLNk.chatbox_bot__xGo51 {
+  justify-content: flex-start;
+}
+
+.chatbox_avatar__zJAie {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.chatbox_avatar__zJAie:hover {
+  transform: scale(1.05);
+}
+
+
+.chatbox_typing__PXHYa {
+  font-weight: 600; /* Làm đậm */
+  font-style: italic;
+  color: white;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.chatbox_typing__PXHYa span {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 20px;
+  animation: chatbox_bounce__vgcme 1.8s infinite ease-in-out;
+}
+
+.chatbox_dot1__7HCsZ {
+  animation-delay: 0s;
+}
+.chatbox_dot2__GH8O1 {
+  animation-delay: 0.15s;
+}
+.chatbox_dot3__keInV {
+  animation-delay: 0.3s;
+}
+
+@keyframes chatbox_bounce__vgcme {
+  0%, 80%, 100% {
+    transform: translateY(0);
+    opacity: 0.3;
+  }
+  40% {
+    transform: translateY(-10px); /* Đẩy cao hơn để rõ ràng */
+    opacity: 1;
+  }
+}
+
+
+
+.chatbox_linkButton__08fJW {
+  display: inline-block;
+  padding: 6px 12px;
+  margin-top: 6px;
+  margin-bottom: 4px;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.chatbox_linkButton__08fJW:hover {
+  background-color: #0056b3;
+}
+
+
+.chatbox_cursor__coo14 {
+  animation: chatbox_blink__Wd5KH 1s steps(2, start) infinite;
+  font-weight: bold;
+}
+
+@keyframes chatbox_blink__Wd5KH {
+  to {
+    visibility: hidden;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+
+.chatbox_message__Nuj90 img {
+  max-width: 100%;
+  border-radius: 10px;
+  margin: 10px 0;
+}
 /*!*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
   !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[2].use[1]!./node_modules/next/dist/build/webpack/loaders/next-font-loader/index.js??ruleSet[1].rules[13].oneOf[2].use[2]!./node_modules/next/font/google/target.css?{"path":"app\\layout.jsx","import":"Inter","arguments":[{"subsets":["latin"]}],"variableName":"inter"} ***!
   \*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/

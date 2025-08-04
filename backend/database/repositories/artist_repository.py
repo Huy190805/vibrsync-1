@@ -16,7 +16,6 @@ class ArtistRepository:
     def find_by_name(self, name: str) -> List[dict]:
      return list(self.collection.find({"name": {"$regex": f"^{name}$", "$options": "i"}}))
 
-
     def find_by_id(self, artist_id: ObjectId) -> Optional[dict]:
         return self.collection.find_one({"_id": artist_id})
 
@@ -40,6 +39,9 @@ class ArtistRepository:
         matched_artists = [a for a in all_artists if a["name"] in matches]
         return matched_artists
 
-    
     def update_by_id(self, artist_id: ObjectId, update_dict: dict):
         return self.collection.update_one({"_id": artist_id}, {"$set": update_dict})
+    
+    def get_all_names(self):
+        # Trả về danh sách tất cả tên nghệ sĩ (chuẩn hóa)
+        return [artist["name"].lower() for artist in self.collection.find({}, {"name": 1})]
