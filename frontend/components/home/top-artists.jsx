@@ -1,12 +1,11 @@
+// File: components/home/top-artists.jsx
 import Image from "next/image";
 import Link from "next/link";
-import { fetchArtists } from "@/lib/api";
 import PlayArtistButton from "@/components/artist/play-artist-button";
 
-export default async function TopArtists() {
-  const data = await fetchArtists() || {};
-  const artists = data.artists || [];
-  const topArtists = artists.slice(0, 10); // Lấy top 10 nghệ sĩ
+export default function TopArtists({ artists }) {
+  const artistsArray = Array.isArray(artists) ? artists : artists?.artists || [];
+  const topArtists = artistsArray.slice(0, 10);
 
   return (
     <section>
@@ -20,26 +19,20 @@ export default async function TopArtists() {
         </Link>
       </div>
 
-      <div
-        className="flex space-x-4 overflow-x-auto pb-2 no-scrollbar"
-      >
+      <div className="flex space-x-4 overflow-x-auto pb-2 no-scrollbar">
         {topArtists.map((artist) => (
-          <div
-            key={artist.id}
-            className="group relative flex-none w-40 md:w-48"
-          >
-            {/* Ảnh avatar */}
+          <div key={artist.id} className="group relative flex-none w-40 md:w-48">
             <div className="relative aspect-[3/4] rounded-xl overflow-hidden group-hover:shadow-lg group-hover:shadow-purple-500/20 transition-all">
               <Link href={`/artist/${artist.id}`}>
                 <Image
                   src={artist.image || "/placeholder.svg"}
                   alt={artist.name}
                   fill
+                  sizes="(max-width: 768px) 100vw, 20vw"
                   className="object-cover group-hover:scale-105 group-hover:brightness-110 transition-all duration-300"
                 />
               </Link>
 
-              {/* Thông tin lồng dưới ảnh */}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                 <h3 className="font-medium text-white truncate">{artist.name}</h3>
                 <p className="text-xs text-gray-300 truncate">
@@ -49,7 +42,6 @@ export default async function TopArtists() {
                 </p>
               </div>
 
-              {/* Nút phát */}
               <PlayArtistButton artistId={artist.id} />
             </div>
           </div>

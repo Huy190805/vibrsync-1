@@ -1,16 +1,15 @@
+// File: components/home/new-releases.jsx
 import Link from "next/link";
-import { fetchSongs } from "@/lib/api";
 import SongList from "@/components/songs/song-list.jsx";
-import PlayNewReleasesClient from "./play-new-releases-client"; // Nút Play All
+import PlayNewReleasesClient from "./play-new-releases-client";
 
-export default async function NewReleasesSection() {
-  const fetched = await fetchSongs({ sort: "releaseYear", limit: 25 });
-  const newReleases = Array.isArray(fetched) ? fetched : fetched?.songs || [];
+export default function NewReleases({ songs }) {
+  const newReleases = Array.isArray(songs) ? songs : [];
 
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
-        {/* Tiêu đề + Nút Play */}
+        {/* Title + Play All */}
         <div className="flex items-center gap-3">
           <Link
             href="/viewAll/songs"
@@ -21,7 +20,6 @@ export default async function NewReleasesSection() {
           <PlayNewReleasesClient songs={newReleases} />
         </div>
 
-        {/* Nút View All */}
         <Link
           href="/viewAll/songs"
           className="text-sm font-medium text-white hover:text-purple-600 transition-colors"
@@ -30,7 +28,6 @@ export default async function NewReleasesSection() {
         </Link>
       </div>
 
-      {/* Danh sách bài hát */}
       {newReleases.length > 0 ? (
         <SongList
           songs={newReleases}

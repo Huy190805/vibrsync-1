@@ -1,3 +1,4 @@
+// app/page.jsx
 import FeaturedSection from "@/components/featured-section";
 import NewReleases from "@/components/home/new-releases";
 import RecommendedPlaylists from "@/components/playlist/recommended-playlists"; 
@@ -9,19 +10,37 @@ import HotAlbums from "@/components/home/hot-albums";
 import ArtistFanSection from "@/components/home/ArtistFanSection/ArtistFanSection";
 import TopListenStats from "@/components/home/TopListenStats";
 
-export default function Home() {
+import { fetchTopSongs } from "@/lib/api/songs";
+import { fetchAlbums } from "@/lib/api/albums";
+import { fetchArtists } from "@/lib/api";
+import { fetchSongs } from "@/lib/api";
+
+export default async function Home() {
+  
+  const [
+    topSongs,
+    albums,
+    artists,
+    newReleases
+  ] = await Promise.all([
+    fetchTopSongs(20),
+    fetchAlbums({ limit: 12 }),
+    fetchArtists(),
+    fetchSongs({ sort: "releaseYear", limit: 25 }),
+  ]);
+
   return (
     <div className="space-y-8 pb-24">
-      <FeaturedSection />
+      <FeaturedSection songs={topSongs} />
       <RecommendedPlaylists />
       <RecommendSection />
-      <NewReleases />
+      <NewReleases songs={newReleases} />
       <TopListenStats />
-      <ArtistFanSection/>
-      <ChatBoxLauncher />      
-      <TopArtists />
-      <HotAlbums />
+      <ArtistFanSection artists={artists} />
+      <ChatBoxLauncher />
+      <TopArtists artists={artists} />
+      <HotAlbums albums={albums} />
       <ListeningHistory />
     </div>
-  )
+  );
 }

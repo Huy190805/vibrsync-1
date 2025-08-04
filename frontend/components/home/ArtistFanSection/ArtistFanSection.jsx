@@ -1,5 +1,4 @@
-
-import { fetchArtists } from "@/lib/api/artists";
+// File: components/home/ArtistFanSection/ArtistFanSection.jsx
 import { fetchSongsByArtistWithQuery } from "@/lib/api/songs";
 import ArtistFanSectionClient from "./ArtistFanSectionClient";
 
@@ -9,36 +8,30 @@ const formatDuration = (seconds) => {
   return `${minutes}:${secs.toString().padStart(2, "0")}`;
 };
 
-export default async function ArtistFanSection() {
+export default async function ArtistFanSection({ artists }) {
   try {
-    // Fetch danh sách nghệ sĩ
-    const artistsData = await fetchArtists({ cache: "force-cache" });
-    const artistsArray = Array.isArray(artistsData) ? artistsData : artistsData.artists || [];
+    const artistsArray = Array.isArray(artists) ? artists : artists?.artists || [];
     if (!artistsArray.length) {
-      throw new Error("Không tìm thấy nghệ sĩ hoặc định dạng dữ liệu không hợp lệ");
+      throw new Error("No artists found or invalid data format");
     }
 
-    // Ánh xạ dữ liệu nghệ sĩ
     const mappedArtists = artistsArray.map((artist) => ({
-      id: artist._id || crypto.randomUUID(),
-      name: artist.name || "Nghệ sĩ không xác định",
+      id: artist._id || artist.id || crypto.randomUUID(),
+      name: artist.name || "Unknown Artist",
       avatar: artist.thumbnail || artist.image || "https://via.placeholder.com/80",
-      followers: artist.followers ? `${(artist.followers / 1000000).toFixed(1)}M` : "0M",
+      followers: artist.followers ? `${(artist.followers / 1_000_000).toFixed(1)}M` : "0M",
     }));
 
-    // Chọn nghệ sĩ ngẫu nhiên
     const currentArtistIndex = Math.floor(Math.random() * mappedArtists.length);
     const currentArtist = mappedArtists[currentArtistIndex];
 
-    // Fetch bài hát, chỉ lấy các trường cần thiết
     const songsData = await fetchSongsByArtistWithQuery(currentArtist.id, {
       cache: "force-cache",
       fields: "_id,title,artist,coverArt,duration,artistId",
+      limit: 20,
     });
 
-    // Ánh xạ và lọc bài hát
-    const mappedSongs = songsData
-      .slice(0, 200) // Giảm giới hạn để tối ưu
+    const mappedSongs = (songsData || [])
       .filter((song) => {
         const hasValidId = song._id || song.id;
         const matchesArtistById = String(song.artistId) === String(currentArtist.id);
@@ -47,7 +40,7 @@ export default async function ArtistFanSection() {
       })
       .map((song) => ({
         id: song._id || song.id || crypto.randomUUID(),
-        title: song.title || "Bài hát không xác định",
+        title: song.title || "Unknown Song",
         duration: song.duration ? formatDuration(song.duration) : "3:00",
         image: song.thumbnail || song.coverArt || song.image || "https://via.placeholder.com/180",
         audioUrl: song.audioUrl || "",
@@ -65,11 +58,11 @@ export default async function ArtistFanSection() {
     );
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      console.error("Server Component Error:", error);
+      console.error("ArtistFanSection Error:", error);
     }
     return (
       <div className="text-center text-red-400 text-lg font-medium">
-        Lỗi tải dữ liệu: {error.message}
+        Failed to load artist section: {error.message}
       </div>
     );
   }

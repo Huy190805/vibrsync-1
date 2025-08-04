@@ -1,7 +1,6 @@
-import { fetchTopSongs } from "@/lib/api/songs";
+// File: components/featured-section.jsx
 import FeaturedClient from "./FeaturedClient";
 
-export default async function FeaturedSection() {
-  const topSongs = await fetchTopSongs(20);
-  return <FeaturedClient songs={topSongs} />;
+export default function FeaturedSection({ songs }) {
+  return <FeaturedClient songs={songs} />;
 }
