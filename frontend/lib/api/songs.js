@@ -95,3 +95,11 @@ export async function fetchSongsByGenre(genreName) {
     return { songs: [], total: 0 };
   }
 }
+
+export async function fetchLyricsBySongId(songId) {
+  const res = await fetch(`${API_BASE}/songs/${songId}/lyrics`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch lyrics (${res.status})`);
+  }
+  return res.json(); // => { lyrics_lrc: "..." }
+}

@@ -1,11 +1,12 @@
-from database.db import songs_collection
+from database.db import songs_collection, db
 from bson import ObjectId
 from bson.errors import InvalidId
 from bson.regex import Regex
 from typing import List, Optional, Dict
 from datetime import datetime
 import logging
-from database.db import db 
+import random
+from services.genre_service import get_region_query
 
 # 🔧 Cấu hình logger
 logger = logging.getLogger(__name__)
@@ -17,6 +18,20 @@ if not logger.handlers:
     logger.addHandler(handler)
 
 class SongRepository:
+    PROJECTION = {
+        "title": 1,
+        "artistId": 1,
+        "album": 1,
+        "releaseYear": 1,
+        "duration": 1,
+        "genre": 1,
+        "coverArt": 1,
+        "audioUrl": 1,
+        "lyrics_lrc": 1,
+        "created_at": 1,
+        "updated_at": 1
+    }
+
     def __init__(self):
         self.collection = db["songs"]
         
@@ -49,7 +64,7 @@ class SongRepository:
 
     @staticmethod
     def find_by_id(song_id: str) -> Optional[Dict]:
-        return songs_collection.find_one({"_id": SongRepository._validate_object_id(song_id)})
+        return songs_collection.find_one({"_id": SongRepository._validate_object_id(song_id)}, SongRepository.PROJECTION)
 
     @staticmethod
     def find_by_artist_id(artist_id: ObjectId) -> List[Dict]:
@@ -63,7 +78,7 @@ class SongRepository:
             })
             return list(songs)
         except Exception as e:
-            print(f"Error in find_by_artist_id: {str(e)}")
+            logger.error(f"[find_by_artist_id] Error: {str(e)}")
             raise ValueError(f"Failed to query songs by artist_id: {str(e)}")
 
     @staticmethod
@@ -98,30 +113,27 @@ class SongRepository:
     @staticmethod
     def get_all_songs_simple() -> List[Dict]:
         try:
-            songs = songs_collection.find({}, {
-                "_id": 1,
-                "title": 1,
-                "artist": 1,
-                "artistId": 1,
-                "releaseYear": 1
-            })
+            songs = songs_collection.find({}, SongRepository.PROJECTION)
             return list(songs)
         except Exception as e:
-            logger.error(f"Error in get_all_songs_simple: {str(e)}")
+            logger.error(f"[get_all_songs_simple] Error: {str(e)}")
             return []
     
     @staticmethod
     def find_by_album_id(album_id: str, artist_id: str) -> List[dict]:
-        return list(
-            songs_collection.find({
+        """Lấy bài hát theo album + artist (artistId có thể là string hoặc ObjectId)."""
+        try:
+            return list(songs_collection.find({
                 "album": album_id,
                 "$or": [
                     {"artistId": artist_id},
-                    {"artistId": ObjectId(artist_id)}  # để chắc ăn
+                    {"artistId": ObjectId(artist_id)}
                 ]
-            })
-        )
-    
+            }, SongRepository.PROJECTION))
+        except Exception as e:
+            logger.error(f"[find_by_album_id] Error: {str(e)}")
+            raise
+
     @staticmethod
     def search_by_title(keyword: str, limit: int = 20) -> List[Dict]:
         try:
@@ -228,6 +240,57 @@ class SongRepository:
            print(f"Error in find_by_genre: {str(e)}")
            raise ValueError(f"Failed to query songs by genre: {str(e)}")
         
-    # Trả về danh sách tất cả tên bài hát (chuẩn hóa)    
+    # -----------------------
+    # Genre & Region
+    # -----------------------
+    @staticmethod
+    def get_random_songs(limit: int = 10) -> List[Dict]:
+        try:
+            pipeline = [
+                {"$sample": {"size": limit}},
+                {"$project": SongRepository.PROJECTION}
+            ]
+            return list(songs_collection.aggregate(pipeline))
+        except Exception as e:
+            logger.error(f"[get_random_songs] Error: {str(e)}")
+            raise ValueError(f"Error in get_random_songs: {str(e)}")
+
+    @staticmethod
+    def get_random_songs_by_region(region: Optional[str], limit: int = 12) -> List[Dict]:
+        try:
+            match_stage = {"$match": get_region_query(region)} if region else {"$match": {}}
+            pipeline = [
+                match_stage,
+                {"$sample": {"size": limit}},
+                {"$project": SongRepository.PROJECTION}
+            ]
+            return list(songs_collection.aggregate(pipeline))
+        except Exception as e:
+            logger.error(f"[get_random_songs_by_region] Error: {str(e)}")
+            raise ValueError(f"Error in get_random_songs_by_region: {str(e)}")
+
+    @staticmethod
+    def find_by_region(region: str, limit: Optional[int] = None, refresh: bool = False) -> List[Dict]:
+        try:
+            match = get_region_query(region)
+            cursor = songs_collection.find(match, SongRepository.PROJECTION)
+
+            if refresh:
+                songs = list(cursor)
+                random.shuffle(songs)
+                return songs[:limit] if limit else songs
+
+            cursor = cursor.sort("title", 1)
+            if limit:
+                cursor = cursor.limit(limit)
+            return list(cursor)
+        except Exception as e:
+            logger.error(f"[find_by_region] Error: {str(e)}")
+            raise ValueError(f"Failed to find songs by region: {str(e)}")
+        
+    # -----------------------
+    # Other
+    # -----------------------   
+    @staticmethod
     def get_all_titles(self):
         return [song["title"].lower() for song in self.collection.find({}, {"title": 1})]
