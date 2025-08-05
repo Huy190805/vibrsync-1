@@ -31,9 +31,11 @@ class SongBase(BaseModel):
         return v
 
 class SongCreate(SongBase):
+    """Dùng khi tạo bài hát mới"""
     pass
 
 class SongUpdate(BaseModel):
+    """Dùng khi update bài hát"""
     title: Optional[str] = None
     artist: Optional[str] = None
     album: Optional[str] = None
@@ -56,8 +58,8 @@ class SongCreateRequest(BaseModel):
     coverArt: Optional[str] = None
     audioUrl: Optional[str] = None
 
-
 class SongInDB(SongBase):
+    """Model trả về khi đọc từ DB"""
     id: str
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -65,5 +67,7 @@ class SongInDB(SongBase):
     contributingArtistIds: Optional[List[str]] = [] 
 
     class Config:
+        allow_population_by_field_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
+        fields = {"id": "_id"}  # Map MongoDB _id -> id

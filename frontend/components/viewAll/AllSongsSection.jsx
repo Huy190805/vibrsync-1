@@ -1,10 +1,13 @@
+// frontend/components/viewAll/AllSongsSection.jsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { Play, Pause, Heart, MoreHorizontal } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { fetchSongs } from "@/lib/api";
 import { useMusic } from "@/context/music-context";
+import { formatDuration } from "@/lib/utils";
 
 export default function AllSongsSection() {
   const [songsByArtist, setSongsByArtist] = useState({});
@@ -28,7 +31,6 @@ export default function AllSongsSection() {
         if (!grouped[song.artistId]) {
           grouped[song.artistId] = {
             artistName: song.artist,
-            artistImage: song.artistImage || "/placeholder.svg",
             songs: [],
           };
         }
@@ -52,8 +54,30 @@ export default function AllSongsSection() {
     setActiveArtistId(artistId);
   };
 
+  const handlePlaySong = (song, artistSongs) => {
+    setSongs(artistSongs);
+    setContext("artist");
+    setContextId(song.artistId);
+    playSong(song);
+    setActiveArtistId(song.artistId);
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
+      {/* Danh sách nghệ sĩ (ẩn thanh scroll ngang) */}
+      <div className="flex gap-6 overflow-x-auto pb-4 border-b border-zinc-700 mb-6 scrollbar-hide">
+        {Object.entries(songsByArtist).map(([artistId, artistData]) => (
+          <Link
+            key={artistId}
+            href={`/artist/${artistId}`}
+            className="text-2xl font-extrabold text-white hover:text-[#39FF14] transition-colors whitespace-nowrap"
+          >
+            {artistData.artistName}
+          </Link>
+        ))}
+      </div>
+
+      {/* Danh sách bài hát theo nghệ sĩ */}
       {Object.entries(songsByArtist).map(([artistId, artistData]) => {
         const isPlayingThisArtist =
           activeArtistId === artistId &&
@@ -63,22 +87,16 @@ export default function AllSongsSection() {
         return (
           <div
             key={artistId}
-            className="bg-[#111111] p-6 rounded-xl border border-zinc-800 hover:border-[#39FF14]/30 shadow-md hover:shadow-[#39FF14]/20 transition-all space-y-4"
+            className="bg-[#111111] p-6 rounded-xl border border-zinc-800 hover:border-[#39FF14]/30 shadow-md hover:shadow-[#39FF14]/20 transition-all space-y-4 mt-10"
           >
-            {/* Header */}
+            {/* Header nghệ sĩ */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Image
-                  src={artistData.artistImage}
-                  alt={artistData.artistName}
-                  width={60}
-                  height={60}
-                  className="rounded-full object-cover border border-white/20"
-                />
-                <h3 className="text-white text-lg font-bold">
-                  {artistData.artistName}
-                </h3>
-              </div>
+              <Link
+                href={`/artist/${artistId}`}
+                className="text-2xl font-extrabold text-white hover:text-[#39FF14] transition-colors"
+              >
+                {artistData.artistName}
+              </Link>
 
               <button
                 onClick={() => handlePlayAll(artistId)}
@@ -103,12 +121,14 @@ export default function AllSongsSection() {
             </div>
 
             {/* Danh sách bài hát */}
-            <div className="w-full">
+            <div className="w-full overflow-x-auto">
               <table className="w-full text-sm text-white">
                 <thead>
                   <tr className="text-gray-400 border-b border-white/10 text-left">
                     <th className="py-2">#</th>
+                    <th>Cover</th>
                     <th>Title</th>
+                    <th>Artist</th>
                     <th>Album</th>
                     <th>Duration</th>
                     <th></th>
@@ -120,32 +140,64 @@ export default function AllSongsSection() {
                       key={song.id}
                       className="hover:bg-[#39FF14]/5 border-b border-white/5"
                     >
-                      <td className="py-2">{index + 1}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <Image
-                            src={song.cover_art || "/placeholder.svg"}
-                            alt={song.title}
-                            width={40}
-                            height={40}
-                            className="rounded-md object-cover"
-                          />
-                          <div>
-                            <p className="text-white font-medium">
-                              {song.title}
-                            </p>
-                            <p className="text-gray-400 text-xs">
-                              {song.artist}
-                            </p>
-                          </div>
+                      <td className="py-3">{index + 1}</td>
+
+                      <td className="py-3">
+                        <div className="relative group w-10 h-10">
+                          <Link href={`/song/${song.id}`}>
+                            <Image
+                              src={song.coverArt || "/placeholder.svg"}
+                              alt={song.title}
+                              width={40}
+                              height={40}
+                              className="rounded-md object-cover"
+                            />
+                          </Link>
+                          <button
+                            onClick={() =>
+                              handlePlaySong(song, artistData.songs)
+                            }
+                            className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition rounded-md"
+                          >
+                            <Play size={16} className="text-white" />
+                          </button>
                         </div>
                       </td>
-                      <td className="text-gray-300">{song.album || "Single"}</td>
-                      <td className="text-gray-300">{song.duration || "?"}</td>
-                      <td>
+
+                      <td className="py-3">
+                        <Link
+                          href={`/song/${song.id}`}
+                          className="text-white font-medium hover:underline"
+                        >
+                          {song.title}
+                        </Link>
+                      </td>
+
+                      <td className="py-3">
+                        <Link
+                          href={`/artist/${song.artistId || ""}`}
+                          className="text-gray-400 hover:text-[#39FF14] transition-colors"
+                        >
+                          {song.artist}
+                        </Link>
+                      </td>
+
+                      <td className="text-gray-300 py-3">
+                        {song.album || "Single"}
+                      </td>
+                      <td className="text-gray-300 py-3">
+                        {formatDuration(song.duration || 0)}
+                      </td>
+                      <td className="py-3">
                         <div className="flex gap-3 justify-end pr-2">
-                          <Heart size={16} className="text-zinc-400 hover:text-[#39FF14]" />
-                          <MoreHorizontal size={16} className="text-zinc-400 hover:text-[#39FF14]" />
+                          <Heart
+                            size={16}
+                            className="text-zinc-400 hover:text-[#39FF14]"
+                          />
+                          <MoreHorizontal
+                            size={16}
+                            className="text-zinc-400 hover:text-[#39FF14]"
+                          />
                         </div>
                       </td>
                     </tr>

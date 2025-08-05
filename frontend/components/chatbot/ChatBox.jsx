@@ -265,7 +265,7 @@ export default function ChatBox({ isOpen, onClose }) {
             }`}
           >
             <img
-              src={chat.sender === "user" ? "/save-your-tears-album-cover.png" : "/robot.jpg"}
+              src={chat.sender === "user" ? "/User.jpg" : "/ChatBot.jpg"}
               alt={chat.sender === "user" ? "User Avatar" : "Bot Avatar"}
               className={styles.avatar}
             />

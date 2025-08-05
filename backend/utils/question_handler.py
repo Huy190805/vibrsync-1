@@ -11,7 +11,7 @@ from database.db import songs_collection, artists_collection, albums_collection
 from database.repositories.album_repository import AlbumRepository
 from services.song_service import SongService
 from utils.text_utils import normalize_text
-
+from collections import defaultdict
 
 # ======== Chuẩn hóa văn bản ==========
 def normalize_text(text: str) -> str:
@@ -25,7 +25,7 @@ def normalize_text(text: str) -> str:
 def detect_language(text: str) -> str:
     return "en" if re.search(r'[a-zA-Z]', text) and not re.search(r'[à-ỹÀ-Ỹ]', text) else "vi"
 
-
+# ======== Tìm kiếm gần đúng ==========
 def find_best_match(query: str, candidates: list[str]) -> str:
     query_norm = normalize_text(query)
     candidates_norm = [normalize_text(c) for c in candidates]
@@ -45,14 +45,12 @@ def search_artist(query: str, all_artists: list[str]):
         print("Không tìm thấy nghệ sĩ phù hợp.")
         return None
 
-
 # ======== Khởi tạo service ==========
 artist_repo = ArtistRepository()
 song_repo = SongRepository()
 album_repo = AlbumRepository()
 artist_service = ArtistService()
 song_service = SongService(song_repo, artist_repo)
-
 
 def handle_user_input(user_input: str):
     query = normalize_text(user_input)
@@ -77,13 +75,8 @@ def handle_user_input(user_input: str):
     # 3. Fallback gọi Gemini
     return ask_gemini(user_input)
 
-
-
-artist_service = ArtistService()
-
 def get_all_artists_simple():
     return artist_service.get_all_artists_simple()
-
 
 # ======== Lấy dữ liệu từ MongoDB ==========
 try:
@@ -116,7 +109,6 @@ ARTIST_ENTRIES = [
     for artist in ARTISTS_DATA
 ]
 
-
 SONGS_DATA = list(songs_collection.find({}))
 SONG_ENTRIES = [
     {
@@ -141,26 +133,47 @@ SONG_ENTRIES = [
     for song in SONGS_DATA
 ]
 
+# ======== Quản lý thể loại ==========
+ALL_GENRES = set()
+for song in SONG_ENTRIES:
+    for genre in song["genres"]:
+        ALL_GENRES.add(normalize_text(genre))  # chuẩn hóa chữ thường, không dấu
+
+def count_all_genres():
+    return len(ALL_GENRES), list(ALL_GENRES)
+
+GENRE_NORMALIZATION_MAP = {
+    "sôi động": ["dance", "dance-pop", "pop", "remix", "electronic", "edm"],
+    "buồn": ["ballad", "sad", "r&b", "acoustic"],
+    "thư giãn": ["chill", "relax", "lofi", "acoustic"],
+    "tình yêu": ["love", "romantic", "pop", "r&b"],
+    "rap": ["rap", "hiphop", "hip-hop"],
+    "vietnamese": ["vietnamese", "v-pop", "việt", "vietnam"],
+    "uk-us": ["english", "us-uk", "uk/us", "pop", "r&b", "dance-pop"],
+}
+
+def get_songs_by_genre(query_genre: str):
+    normalized_query = normalize_text(query_genre)
+    mapped_keywords = GENRE_NORMALIZATION_MAP.get(normalized_query, [normalized_query])
+    return [
+        song for song in SONG_ENTRIES
+        if any(normalize_text(genre) in mapped_keywords for genre in song["genres"])
+    ]
 
 albums = list(albums_collection.find({}))
-
-ALBUM_ENTRIES = []
-for album in albums:
-    # Lấy các trường cần thiết
-    album_entry = {
+ALBUM_ENTRIES = [
+    {
         "title": album.get("title", ""),
         "album_id": str(album.get("_id", "")),
-        "artist_id": str(album.get("artist_id", "")),  # QUAN TRỌNG
+        "artist_id": str(album.get("artist_id", "")),
         "release_year": album.get("release_year", ""),
         "cover_image": album.get("cover_image", ""),
         "url": f"http://localhost:3000/album/{str(album['_id'])}",
         "keywords": [normalize_text(album.get("title", ""))],
         "image": album.get("cover_image", ""),
-
     }
-    ALBUM_ENTRIES.append(album_entry)
-
-
+    for album in albums
+]
 
 # ======== Câu hỏi định nghĩa sẵn ==========
 CUSTOM_RESPONSES = {
@@ -202,9 +215,7 @@ CUSTOM_RESPONSES = {
     },
 }
 
-
 # ========== HÀM XỬ LÝ CHÍNH ==========
-
 async def handle_user_question(prompt: str) -> str:
     norm_prompt = normalize_text(prompt)
     language = detect_language(prompt)
@@ -215,10 +226,47 @@ async def handle_user_question(prompt: str) -> str:
             if normalize_text(question) in norm_prompt:
                 return group["answer_vi"] if language == "vi" else group["answer_en"]
 
-   
-    
-    # 3. Enrich prompt nếu quá ngắn
-    # ===== Enrich nếu đầu vào không chứa từ khóa nhạc =====
+    # 2. Trả lời câu hỏi đếm số bài hát
+    if any(kw in prompt.lower() for kw in ["bao nhiêu bài", "tổng số bài", "có bao nhiêu nhạc", "số lượng bài hát"]):
+        return f"🎧 Hệ thống hiện có tổng cộng {len(SONG_ENTRIES)} bài hát."
+
+    # 3. Nhận diện câu hỏi về thể loại/tâm trạng
+    GENRE_MAPPINGS = {
+        "edm": ["sôi động", "remix", "dance", "bốc lửa", "năng lượng", "vui vẻ", "edm"],
+        "Chill/Relax": ["buồn", "tâm trạng", "u sầu", "cô đơn"],
+        "Korean": ["chill", "thư giãn", "nhẹ nhàng", "êm dịu", "kpop", "Korean", "han quoc", "hanquoc"],
+        "love": ["tình yêu", "lãng mạn", "yêu", "romantic", "Love"],
+        "rap": ["rap", "hiphop", "hip-hop", "nhạc rap", "hip hop"],
+        "vietnamese": ["việt nam", "nhạc việt", "vietnamese", "ca sĩ việt"],
+        "uk-us": ["usuk", "uk us", "us/uk", "âu mỹ", "nhạc âu mỹ", "nhạc quốc tế", "english songs"]
+    }
+
+    genre_matched = False
+    for genre_key, synonyms in GENRE_MAPPINGS.items():
+        if any(kw in prompt.lower() for kw in synonyms):
+            genre_matched = True
+            matched_songs = get_songs_by_genre(genre_key)
+            if not matched_songs:
+                return f"😥 Hiện không tìm thấy bài hát thuộc thể loại **{genre_key}**."
+            reply = "\n\n🎵 " + (
+                f"Một số bài hát thuộc thể loại **{genre_key}** bạn có thể thích:" if language == "vi"
+                else f"Some songs in the **{genre_key}** genre you might enjoy:"
+            ) + "\n"
+            songs_by_artist = defaultdict(list)
+            for song in matched_songs:
+                songs_by_artist[song["artist"]].append(song)
+            count = 0
+            for artist, songs in songs_by_artist.items():
+                for song in songs[:3]:
+                    reply += f"- [{song['title']}]({song['url']}) – {artist}\n"
+                    count += 1
+                    if count >= 10:
+                        break
+                if count >= 10:
+                    break
+            return reply
+
+    # 4. Enrich prompt nếu quá ngắn
     MUSIC_KEYWORDS = [normalize_text(w) for w in ["bài hát", "ca sĩ", "nhạc", "nghệ sĩ", "album", "song", "artist", "music"]]
     if not any(word in normalize_text(prompt) for word in MUSIC_KEYWORDS):
         enriched_prompt = f"bài hát {prompt}" if language == "vi" else f"song {prompt}"
@@ -227,15 +275,13 @@ async def handle_user_question(prompt: str) -> str:
         enriched_prompt = prompt
         norm_prompt = normalize_text(prompt)
 
-
-    # 4. Xác định loại câu hỏi: bài hát / nghệ sĩ / album
+    # 5. Xác định loại câu hỏi: bài hát / nghệ sĩ / album
     if any(key in norm_prompt for key in ["album", "list", "những", "nhiều bài", "nhiều", "tên album"]):
         search_entries = ALBUM_ENTRIES
     else:
         search_entries = ARTIST_ENTRIES + SONG_ENTRIES
 
-
-    # 5. So khớp gần đúng
+    # 6. So khớp gần đúng
     def get_similarity(a, b):
         if b in a or a in b:
             return 1.0
@@ -243,7 +289,6 @@ async def handle_user_question(prompt: str) -> str:
 
     best_entry = None
     best_score = 0.0
-
     for entry in search_entries:
         for keyword in entry["keywords"]:
             score = get_similarity(norm_prompt, keyword)
@@ -251,10 +296,9 @@ async def handle_user_question(prompt: str) -> str:
                 best_score = score
                 best_entry = entry
 
-    # 6. Nếu khớp dữ liệu nghệ sĩ, bài hát, hoặc album
+    # 7. Nếu khớp dữ liệu nghệ sĩ, bài hát, hoặc album
     if best_entry and best_score >= 0.6:
         print(f"[DEBUG] best_entry = {best_entry}, score = {best_score}")
-
         name = best_entry.get("name") or best_entry.get("title")
         extra_info = ""
 
@@ -267,11 +311,9 @@ async def handle_user_question(prompt: str) -> str:
 
             # Từ khóa thể hiện ý muốn nghe danh sách bài hát
             song_keywords = ["danh sách", "những bài", "list", "nhiều bài", "playlist", "các bài", "nghe nhạc"]
-            # Ví dụ trong phần if "bio" in best_entry:
             is_asking_for_songs = any(kw in prompt.lower() for kw in song_keywords)
 
-
-            # ✅ Nếu người dùng hỏi về danh sách bài hát → không cần hỏi Gemini
+            # Nếu người dùng hỏi về danh sách bài hát → không cần hỏi Gemini
             if is_asking_for_songs:
                 reply_text = (
                     f"Dưới đây là danh sách một số bài hát nổi bật của nghệ sĩ {artist_name}:"
@@ -296,12 +338,9 @@ async def handle_user_question(prompt: str) -> str:
 
             # Bắt đầu khởi tạo phần trả lời
             reply = ""
-
             if artist_image:
                 reply += f"![Ảnh nghệ sĩ]({artist_image})\n\n"
-
             reply += reply_text
-
             if artist_url:
                 reply += (
                     f"\n\n👉 Bạn có thể xem thêm về nghệ sĩ: [{artist_name}]({artist_url})"
@@ -309,7 +348,7 @@ async def handle_user_question(prompt: str) -> str:
                     f"\n\n👉 Learn more about the artist: [{artist_name}]({artist_url})"
                 )
 
-            # ✅ Luôn tìm danh sách bài hát dù câu hỏi là gì
+            # Luôn tìm danh sách bài hát dù câu hỏi là gì
             songs_by_artist = [
                 s for s in SONG_ENTRIES
                 if s["artist"].lower() == artist_name.lower() or s.get("artistId", "") == artist_id
@@ -318,15 +357,9 @@ async def handle_user_question(prompt: str) -> str:
                 reply += "\n\n🎵 " + ("Một số bài hát nổi bật:" if language == "vi" else "Some featured songs:") + "\n"
                 for s in songs_by_artist[:5]:  # giới hạn 5 bài
                     reply += f"- [{s['title']}]({s['url']})\n"
-
             return reply
 
-
-        
-
-        
-
-        elif best_entry.get("type") == "song":  # song
+        elif best_entry.get("type") == "song":  # Song
             song_title = best_entry.get("title", "bài hát không rõ")
             artist_name = best_entry.get("artist", "").strip()
             release_year = best_entry.get("releaseYear", "")
@@ -374,21 +407,16 @@ async def handle_user_question(prompt: str) -> str:
 
             # Trả về phần markdown
             response = ""
-
             if best_entry.get("image"):
                 response += f"![Ảnh bài hát]({best_entry['image']})\n\n"
-
             response += reply
-
             if song_id:
                 response += (
                     f"\n\n👉 Nghe bài hát: [{song_title}](http://localhost:3000/song/{song_id})"
                     if language == "vi" else
                     f"\n\n👉 Listen to the song: [{song_title}](http://localhost:3000/song/{song_id})"
                 )
-
             return response
-
 
         elif "album_id" in best_entry:  # Album
             album_title = best_entry.get("title", "album không rõ")
@@ -410,7 +438,6 @@ async def handle_user_question(prompt: str) -> str:
             )
 
             enriched_prompt = extra_info
-
             try:
                 reply = await ask_gemini(enriched_prompt)
             except Exception as e:
@@ -431,7 +458,4 @@ async def handle_user_question(prompt: str) -> str:
                 if language == "vi" else
                 f"\n\n👉 You can learn more about the album: [{album_title}]({best_entry['url']})"
             )
-
             return reply
-
-
