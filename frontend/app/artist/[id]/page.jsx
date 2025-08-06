@@ -1,8 +1,10 @@
+// File: app/artist/[id]/page.jsx
+
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { fetchArtistById, fetchSuggestedArtists } from "@/lib/api/artists";
-import { fetchSongsByArtist, fetchTopSongs } from "@/lib/api/songs";
+import { fetchSongsByArtist } from "@/lib/api/songs";
 import { fetchAlbumsByArtist } from "@/lib/api/albums";
 
 import ArtistSongs from "@/components/artist/ArtistSongs";
@@ -16,11 +18,10 @@ export default async function ArtistDetailPage({ params, searchParams }) {
   const artistId = params.id;
   const from = searchParams?.from;
 
-  const [artist, songsRes, albumsRes, topSongsRes, suggestedRes] = await Promise.all([
+  const [artist, songsRes, albumsRes, suggestionsRes] = await Promise.all([
     fetchArtistById(artistId),
     fetchSongsByArtist(artistId),
     fetchAlbumsByArtist(artistId),
-    fetchTopSongs(),
     from !== "youmaylike" ? fetchSuggestedArtists(artistId) : Promise.resolve([]),
   ]);
 
@@ -28,8 +29,14 @@ export default async function ArtistDetailPage({ params, searchParams }) {
 
   const songs = songsRes?.songs || [];
   const albums = albumsRes?.albums || [];
-  const topSongs = topSongsRes || [];
-  const suggestedArtists = suggestedRes?.filter(a => a.id !== artistId) || [];
+
+  // Use local top 10 instead of fetchTopSongs
+  const topSongs = songs
+    .slice()
+    .sort((a, b) => (b.listenCount || 0) - (a.listenCount || 0))
+    .slice(0, 10);
+
+  const suggestedArtists = (suggestionsRes || []).filter((a) => a.id !== artistId);
 
   return (
     <div className="bg-gray-900 text-white min-h-screen">
@@ -43,8 +50,9 @@ export default async function ArtistDetailPage({ params, searchParams }) {
               src={artist.image || "/placeholder.svg"}
               alt={artist.name}
               fill
-              className="object-cover"
               priority
+              sizes="(max-width: 768px) 100vw, 256px"
+              className="object-cover"
             />
           </div>
 
@@ -53,10 +61,8 @@ export default async function ArtistDetailPage({ params, searchParams }) {
               {artist.name}
             </h1>
 
-            {/* Bio popup trigger */}
             <ArtistBio bio={artist.bio} name={artist.name} image={artist.image} />
 
-            {/* Follow / Actions */}
             <div className="mt-4">
               <ClientPlayerActions artist={artist} songs={songs} from={from} />
             </div>
