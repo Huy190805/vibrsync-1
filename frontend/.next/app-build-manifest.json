@@ -22,15 +22,35 @@
       "static/chunks/main-app.js",
       "static/chunks/app/discovery/page.js"
     ],
-    "/search/page": [
+    "/charts/[genre]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/search/page.js"
+      "static/chunks/app/charts/[genre]/page.js"
     ],
-    "/song/[id]/page": [
+    "/profile/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/song/[id]/page.js"
+      "static/chunks/app/profile/page.js"
+    ],
+    "/playlist/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/playlist/[id]/page.js"
+    ],
+    "/liked/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/liked/page.js"
+    ],
+    "/library/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/library/page.js"
+    ],
+    "/album/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/album/[id]/page.js"
     ]
   }
 }

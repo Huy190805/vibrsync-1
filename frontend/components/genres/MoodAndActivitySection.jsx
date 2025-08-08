@@ -43,7 +43,7 @@ export default function MoodAndActivitySection({ hideTitle = false }) {
       {/* Tiêu đề section (ẩn nếu hideTitle = true) */}
       {!hideTitle && (
         <div className="text-center">
-          <h1 className="text-4xl font-extrabold mb-3">🌀 Mood & Activity</h1>
+          <h1 className="text-4xl font-extrabold mb-3">Mood & Activity</h1>
           <p className="text-gray-400">Choose a playlist that suits your mood</p>
         </div>
       )}

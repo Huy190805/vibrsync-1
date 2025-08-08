@@ -143,7 +143,7 @@ def count_all_genres():
     return len(ALL_GENRES), list(ALL_GENRES)
 
 GENRE_NORMALIZATION_MAP = {
-    "sôi động": ["dance", "dance-pop", "pop", "remix", "electronic", "edm"],
+    "sôi động": ["dance", "dance-pop", "pop", "remix", "electronic", "EDM"],
     "buồn": ["ballad", "sad", "r&b", "acoustic"],
     "thư giãn": ["chill", "relax", "lofi", "acoustic"],
     "tình yêu": ["love", "romantic", "pop", "r&b"],
@@ -232,7 +232,7 @@ async def handle_user_question(prompt: str) -> str:
 
     # 3. Nhận diện câu hỏi về thể loại/tâm trạng
     GENRE_MAPPINGS = {
-        "edm": ["sôi động", "remix", "dance", "bốc lửa", "năng lượng", "vui vẻ", "edm"],
+        "EDM": ["sôi động", "remix", "dance", "bốc lửa", "năng lượng", "vui vẻ", "EDM"],
         "Chill/Relax": ["buồn", "tâm trạng", "u sầu", "cô đơn"],
         "Korean": ["chill", "thư giãn", "nhẹ nhàng", "êm dịu", "kpop", "Korean", "han quoc", "hanquoc"],
         "love": ["tình yêu", "lãng mạn", "yêu", "romantic", "Love"],
