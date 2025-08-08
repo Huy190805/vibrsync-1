@@ -109,3 +109,17 @@ export async function updatePlaylist(playlistId, payload) {
   if (!res.ok) throw new Error(data.detail || "Failed to update playlist");
   return data;
 }
+
+export async function updatePlaylistCover(playlistId, newCover) {
+  if (!playlistId || typeof playlistId !== "string") {
+    throw new Error("Invalid playlistId");
+  }
+
+  const res = await fetch(`http://localhost:8000/api/playlists/${playlistId}/cover`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ coverArt: newCover }),
+  });
+
+}
+

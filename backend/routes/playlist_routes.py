@@ -151,3 +151,19 @@ async def remove_song_from_playlist(playlist_id: str, song_id: str):
         del updated["_id"]
         return updated
     raise HTTPException(status_code=500, detail="Failed to update playlist")
+
+@router.patch("/playlists/{playlist_id}/cover")
+async def update_playlist_cover(playlist_id: str, payload: dict):
+    cover_art = payload.get("coverArt")
+    if not cover_art:
+        raise HTTPException(status_code=400, detail="coverArt is required")
+
+    result = playlists_collection.update_one(
+        {"_id": ObjectId(playlist_id)},
+        {"$set": {"coverArt": cover_art}}
+    )
+
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Playlist not found or cover unchanged")
+
+    return {"message": "Playlist cover updated", "coverArt": cover_art}
