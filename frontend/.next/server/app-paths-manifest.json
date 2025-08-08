@@ -1,7 +1,8 @@
 {
+  "/profile/page": "app/profile/page.js",
+  "/charts/[genre]/page": "app/charts/[genre]/page.js",
+  "/liked/page": "app/liked/page.js",
+  "/library/page": "app/library/page.js",
   "/page": "app/page.js",
-  "/signin/page": "app/signin/page.js",
-  "/discovery/page": "app/discovery/page.js",
-  "/search/page": "app/search/page.js",
-  "/song/[id]/page": "app/song/[id]/page.js"
+  "/album/[id]/page": "app/album/[id]/page.js"
 }
