@@ -3,4 +3,4 @@ set -e
 pip install -U pip
 pip install -r requirements.txt
 # IMPORTANT: Render injects $PORT at runtime; bind to it.
-exec uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
+exec uvicorn app:app --host 0.0.0.0 --port "$PORT"
